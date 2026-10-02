@@ -2011,6 +2011,7 @@ internal fun SortOrder.sharedMobileLabel(): String {
         SortOrder.PERCENT_DESC -> readerString("sort_percent_desc", "Percent complete 100–0")
         SortOrder.SIZE_ASC -> readerString("sort_size_smallest", "Size (Smallest)")
         SortOrder.SIZE_DESC -> readerString("sort_size_biggest", "Size (Biggest)")
+        SortOrder.SERIES_ASC -> readerString("sort_series", "Series")
     }
 }
 

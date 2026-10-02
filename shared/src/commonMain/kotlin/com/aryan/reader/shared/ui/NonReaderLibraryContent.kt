@@ -1194,6 +1194,7 @@ internal fun SortOrder.label(): String {
         SortOrder.PERCENT_DESC -> readerString("sort_percent_desc", "Progress high")
         SortOrder.SIZE_ASC -> readerString("sort_size_smallest", "Size small")
         SortOrder.SIZE_DESC -> readerString("sort_size_biggest", "Size large")
+        SortOrder.SERIES_ASC -> readerString("sort_series", "Series")
     }
 }
 

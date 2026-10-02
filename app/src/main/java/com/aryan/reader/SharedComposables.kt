@@ -2280,3 +2280,63 @@ fun TagSelectionBottomSheet(
         )
     }
 }
+
+
+private fun String.looksLikeHtml(): Boolean {
+    return contains(Regex("<\\s*/?\\s*(p|br|div|span|strong|em|ul|ol|li|h[1-6]|blockquote|a|b|i)\\b", RegexOption.IGNORE_CASE)) ||
+        contains(Regex("&(#\\d+|#x[0-9a-fA-F]+|[a-zA-Z]+);"))
+}
+
+private fun RecentFileItem.hasOriginalMetadata(): Boolean {
+    return listOf(originalTitle, originalAuthor, originalSeriesName, originalDescription).any { !it.isNullOrBlank() } ||
+        originalSeriesIndex != null
+}
+
+private fun RecentFileItem.hasMetadataChanges(): Boolean {
+    return metadataValueChanged(title, originalTitle) ||
+        metadataValueChanged(author, originalAuthor) ||
+        metadataValueChanged(seriesName, originalSeriesName) ||
+        seriesIndex != originalSeriesIndex ||
+        metadataValueChanged(description, originalDescription) ||
+        !customName.isNullOrBlank()
+}
+
+private fun metadataValueChanged(current: String?, original: String?): Boolean {
+    return current.orEmpty().trim() != original.orEmpty().trim()
+}
+
+private fun RecentFileItem.seriesLabel(): String? {
+    val series = seriesName?.trim()?.takeIf { it.isNotBlank() } ?: return null
+    return seriesIndex?.takeIf { it > 0.0 }?.let { "$series #${it.formatMetadataNumber()}" } ?: series
+}
+
+private fun RecentFileItem.readingProgressText(): String {
+    val progress = progressPercentage?.coerceIn(0f, 100f)
+    val progressText = progress?.let { String.format(Locale.US, "%.1f%%", it) } ?: "Not started"
+    val locatorText = when {
+        lastPage != null -> "Last page ${lastPage + 1}"
+        lastChapterIndex != null -> "Chapter ${lastChapterIndex + 1}"
+        else -> null
+    }
+    return listOfNotNull(progressText, locatorText).joinToString(" - ")
+}
+
+private fun String.toMetadataValue(): String? {
+    return trim().takeIf { it.isNotEmpty() }
+}
+
+private fun String.toSeriesIndexOrNull(): Double? {
+    return trim()
+        .replace(',', '.')
+        .takeIf { it.isNotEmpty() }
+        ?.toDoubleOrNull()
+        ?.takeIf { it > 0.0 }
+}
+
+private fun Double.formatMetadataNumber(): String {
+    return if (this % 1.0 == 0.0) {
+        toInt().toString()
+    } else {
+        String.format(Locale.US, "%.2f", this).trimEnd('0').trimEnd('.')
+    }
+}

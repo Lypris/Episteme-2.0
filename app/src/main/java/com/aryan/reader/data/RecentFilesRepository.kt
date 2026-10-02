@@ -856,6 +856,16 @@ class RecentFilesRepository(
         return@withContext count > 0
     }
 
+    /** shiroikuma-custom: number of books still awaiting text-metadata extraction, for the
+     *  cover-regeneration progress banner. */
+    suspend fun countFolderBooksNeedingTextMetadata(sourceFolderUri: String? = null): Int = withContext(Dispatchers.IO) {
+        if (sourceFolderUri.isNullOrBlank()) {
+            recentFileDao.countFolderBooksNeedingTextMetadata()
+        } else {
+            recentFileDao.countFolderBooksNeedingTextMetadata(sourceFolderUri)
+        }
+    }
+
     override suspend fun updateExtractedMetadata(items: List<RecentFileItem>) = withContext(Dispatchers.IO) {
         if (items.isEmpty()) return@withContext
         items.chunked(300).forEach { chunk ->

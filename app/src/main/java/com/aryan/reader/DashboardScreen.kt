@@ -50,7 +50,7 @@ fun DashboardScreen(viewModel: MainViewModel, navController: NavHostController, 
     Scaffold(
         topBar = {
             TopAppBar(title = { Text(stringResource(R.string.nav_home)) }, actions = {
-                IconButton(onClick = { navController.navigateIfReady(AppDestinations.SETTINGS_SCREEN_ROUTE) }) {
+                IconButton(onClick = { navController.navigateIfReady(com.aryan.reader.shared.ui.SharedMobileAppDestination.SETTINGS) }) {
                     Icon(Icons.Default.Settings, stringResource(R.string.unified_library_open_settings))
                 }
             })
