@@ -2,7 +2,7 @@
 
 <img src="app/src/main/ic_launcher-playstore.png" width="120" alt="白い熊 書籍閲覧 icon" />
 
-# 白い熊 書籍閲覧
+# 白い熊 書籍閲覧 — Episteme 2.0
 
 **A black-and-yellow e-book reader that reads Japanese the way Japan prints it.**
 
@@ -13,6 +13,19 @@ Installs **side-by-side** with Episteme (app id `shiroikuma.shosekietsuran`).
 **📥 Latest release: [`1.0.56+001`](https://github.com/ShiroiKuma0/shiroikuma-shosekietsuran/releases/latest)** — [all releases & APK downloads »](https://github.com/ShiroiKuma0/shiroikuma-shosekietsuran/releases)
 
 </div>
+
+---
+
+## ✨ Episteme 2.0 — discovery and comic-first reading
+
+This fork ([`Lypris/Episteme-2.0`](https://github.com/Lypris/Episteme-2.0)) builds on 白い熊 書籍閲覧 and adds what a French *bande dessinée* reader needs:
+
+- **🖼️ Landscape fit-to-width** — in landscape the page zooms to fill the screen edge-to-edge (cropping the top and bottom) instead of letterboxing a small portrait page, so every page uses the whole display.
+- **🔎 BDthèque discovery** — a built-in **search** over Bedetheque.com (title, author, series, EAN/ISBN, or a barcode scan) plus a **dashboard** home screen: recently added, continue reading, quick access, and suggestions.
+- **⭐ Wishlist** — save albums found on BDthèque, with a one-tap "open local book" when a matching volume is already in your library.
+- **📚 Comic metadata from ComicInfo.xml** — CBZ/CBR/CB7/CBT files are read for their ComicRack metadata (publication date, publisher, writer, penciller), shown in the file-info sheet and as a **publication-year badge** on every cover.
+- **✅ Mark as read / unread** — select any set of books and set them read or unread in one tap (progress 100 % or reset).
+- **🛠️ Cover regeneration** — one tap rebuilds every cover thumbnail, with a live progress banner.
 
 ---
 
