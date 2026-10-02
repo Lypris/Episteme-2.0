@@ -59,7 +59,7 @@ private val WarnColor = Color(0xFFFF5252)
  * for a backup: [open] the file it streams into, [place] it under the name a backup really wears
  * once the archive is closed and whole, and [discard] whatever is there when it never gets that
  * far. Only [place] may leave a file behind. A backup written by hand is interrupted exactly as
- * easily as an automated one, and 白い熊 cannot tell from the directory listing which is which —
+ * easily as an automated one, and Episteme cannot tell from the directory listing which is which —
  * see [WhiteBearExport.PART_SUFFIX].
  */
 private class Destination(
@@ -70,7 +70,7 @@ private class Destination(
 )
 
 /**
- * 白い熊 export/import panel — same idea and flow as the sister forks: a bordered box
+ * Episteme export/import panel — same idea and flow as the sister forks: a bordered box
  * with the persisted export directory (tap to choose via SAF), the last-export line,
  * a category checklist, and the pill button row (Cancel alone on the left, Import and
  * Export grouped on the right).
@@ -195,7 +195,7 @@ fun WhiteBearExportImportSheet(
     }
 
     /**
-     * A location 白い熊 picked by hand. The system's picker creates the file under its final name
+     * A location Episteme picked by hand. The system's picker creates the file under its final name
      * before a byte is written, so keeping that name off a half-written archive means moving the
      * file aside first and moving it back once the archive is whole. A provider that will not
      * rename gets the plain write — and either way, a run that fails takes the file with it
@@ -217,7 +217,7 @@ fun WhiteBearExportImportSheet(
                 context.contentResolver.openOutputStream(writing)
             },
             place = {
-                // Unmoved means it is already under the name 白い熊 chose, and there is nothing
+                // Unmoved means it is already under the name Episteme chose, and there is nothing
                 // to put back.
                 if (writing == uri) shown
                 else WhiteBearExport.renameDocument(context, writing, shown)?.let { shown }
@@ -314,7 +314,7 @@ fun WhiteBearExportImportSheet(
                 modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 6.dp)
             )
             Text(
-                "Export or import everything the app holds — 白い熊 UI, gestures, reader settings, " +
+                "Export or import everything the app holds — Episteme UI, gestures, reader settings, " +
                     "and the book library with its annotations and covers — by category, as one ZIP.",
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),

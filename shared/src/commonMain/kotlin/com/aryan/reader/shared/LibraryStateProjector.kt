@@ -190,7 +190,7 @@ class SharedLibraryStateProjector(
             .groupBy { it.seriesName.orEmpty() }
             .filter { it.value.size >= 2 }
             .map { (series, books) ->
-                val sortedSeries = books.sortedBy { it.seriesIndex ?: 999.0 }
+                val sortedSeries = sortBooks(books, sortOrder)
                 shelvedBookIds.addAll(books.map { it.id })
                 Shelf("series_$series", series, ShelfType.SERIES, sortedSeries)
             }
@@ -388,6 +388,12 @@ fun sortBooks(books: List<BookItem>, sortOrder: SortOrder): List<BookItem> {
             it.titleSortKey?.lowercase() ?: it.title?.lowercase() ?: it.displayName.lowercase()
         }
         SortOrder.AUTHOR_ASC -> books.sortedWith(compareBy(nullsLast()) { it.author?.lowercase() })
+        SortOrder.SERIES_ASC -> books.sortedWith(
+            compareBy<BookItem, String?>(
+                nullsLast(String.CASE_INSENSITIVE_ORDER)
+            ) { it.seriesName?.trim()?.takeIf { s -> s.isNotEmpty() } }
+                .thenBy { it.seriesIndex ?: Double.MAX_VALUE }
+        )
         SortOrder.PERCENT_ASC -> books.sortedBy { it.progressPercentage ?: 0f }
         SortOrder.PERCENT_DESC -> books.sortedByDescending { it.progressPercentage ?: 0f }
         SortOrder.SIZE_ASC -> books.sortedBy { it.fileSize }

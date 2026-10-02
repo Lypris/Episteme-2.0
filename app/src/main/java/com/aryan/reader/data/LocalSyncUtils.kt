@@ -435,7 +435,7 @@ object LocalSyncUtils {
     }
 
     /**
-     * 白い熊: [shouldStop] is polled between sidecar reads. This phase opens one file per book,
+     * Episteme: [shouldStop] is polled between sidecar reads. This phase opens one file per book,
      * so on a large library it runs for minutes — without a stop check a cancelled worker keeps
      * grinding through it, and anything waiting on the folder-sync lock waits with it.
      */

@@ -23,7 +23,7 @@ data class AndroidPdfMetadataEditResult(
 )
 
 /**
- * 白い熊 UI: writes user-edited metadata into the PDF file itself (document information
+ * Episteme UI: writes user-edited metadata into the PDF file itself (document information
  * dictionary): Title, Author, Subject (= description) and Keywords (= library tags).
  * Mirrors EpubMetadataFileEditor: copy the source beside the app, back the original up once,
  * rewrite, then write the bytes back to the original URI.

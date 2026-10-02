@@ -36,6 +36,7 @@ enum class SortOrder {
     DATE_ADDED_OLDEST,
     TITLE_ASC,
     AUTHOR_ASC,
+    SERIES_ASC,
     PERCENT_ASC,
     PERCENT_DESC,
     SIZE_ASC,
@@ -163,6 +164,21 @@ data class Shelf(
     val topBook: BookItem? get() = books.maxByOrNull { it.timestamp }
     val directBookCount: Int get() = directBooks.size
     val childShelfCount: Int get() = childShelfIds.size
+
+    /** shiroikuma-custom: tome numbers missing from a series shelf, between the lowest and
+     *  highest volumes owned (only integer seriesIndex values count). Hors-séries — stored by
+     *  convention at series_index >= 1000 — are excluded so they never read as missing tomes. */
+    fun missingVolumeNumbers(): List<Int> {
+        if (type != ShelfType.SERIES) return emptyList()
+        val present = books.mapNotNull { item ->
+            item.seriesIndex?.takeIf { it > 0.0 && it < 1000.0 && it == it.toInt().toDouble() }?.toInt()
+        }.distinct().sorted()
+        if (present.isEmpty()) return emptyList()
+        val min = present.first()
+        val max = present.last()
+        if (max <= min) return emptyList()
+        return (min..max).filter { it !in present }
+    }
 }
 
 data class LibraryFilters(

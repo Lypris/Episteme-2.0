@@ -35,7 +35,7 @@ import com.aryan.reader.whitebear.WhiteBearGestureState
 import com.aryan.reader.whitebear.WhiteBearPageTurnAnimation
 
 /**
- * 白い熊 UI: the second book of a parallel set, rendered in its own vertical-scroll pane
+ * Episteme UI: the second book of a parallel set, rendered in its own vertical-scroll pane
  * for the same-screen split modes, with the SAME gestures as the primary reader:
  * side-third taps turn pages, centre tap toggles the toolbars, right-third vertical swipe
  * changes this pane's font size, left-third changes brightness, one-finger horizontal

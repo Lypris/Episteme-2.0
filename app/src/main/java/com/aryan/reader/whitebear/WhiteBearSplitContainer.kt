@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * 白い熊 UI: shares the reader screen between the primary reader (pane 1) and up to two
+ * Episteme UI: shares the reader screen between the primary reader (pane 1) and up to two
  * parallel companion panes according to [layout]. Every divider is draggable: dragging
  * moves the split and the new ratios are reported through [onMainRatioChange] /
  * [onSubRatioChange] (and persisted by the caller). The divider carries the theme border

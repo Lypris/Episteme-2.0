@@ -25,10 +25,13 @@ import androidx.activity.enableEdgeToEdge
 import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -59,6 +62,8 @@ fun MainScreen(
     }
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val discovery: com.aryan.reader.discovery.DiscoveryViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    LaunchedEffect(uiState.rawLibraryFiles) { discovery.updateBooks(uiState.rawLibraryFiles) }
     val viewingShelfName = uiState.viewingShelfId
 
     androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize()) {
@@ -80,7 +85,11 @@ fun MainScreen(
                 },
                 destinationIcon = { destination ->
                     val label = stringResource(destination.androidLabelRes)
-                    Icon(painterResource(destination.androidIconRes), contentDescription = label)
+                    if (destination == SharedMobileMainDestination.SEARCH) {
+                        Icon(Icons.Default.Search, contentDescription = label)
+                    } else {
+                        Icon(painterResource(destination.androidIconRes), contentDescription = label)
+                    }
                 },
                 destinationLabel = { destination -> Text(stringResource(destination.androidLabelRes)) }
             ) { innerPadding ->
@@ -90,11 +99,12 @@ fun MainScreen(
                         .padding(innerPadding)
                 ) {
                     when (selectedDestination) {
-                        SharedMobileMainDestination.HOME -> HomeScreen(
+                        SharedMobileMainDestination.HOME -> DashboardScreen(
                             viewModel = viewModel,
-                            windowSizeClass = windowSizeClass,
-                            navController = navController
+                            navController = navController,
+                            onSearch = { action -> discovery.open(action); viewModel.setMainScreenPage(1) }
                         )
+                        SharedMobileMainDestination.SEARCH -> com.aryan.reader.discovery.SearchScreen(viewModel, discovery)
                         SharedMobileMainDestination.LIBRARY -> LibraryScreen(
                             viewModel = viewModel,
                             navController = navController
@@ -133,7 +143,7 @@ fun MainScreen(
                 onCreateShelf = {
                     val selectedBookIds = uiState.showAddSelectedToShelfDialogFor
                     viewModel.closeAddSelectedToShelf()
-                    viewModel.setMainScreenPage(1)
+                    viewModel.setMainScreenPage(2)
                     viewModel.showCreateShelfDialogForSelectedBooks(selectedBookIds)
                 },
                 onShelvesSelected = { shelfIds ->
@@ -147,6 +157,7 @@ fun MainScreen(
 private val SharedMobileMainDestination.androidRoute: String
     get() = when (this) {
         SharedMobileMainDestination.HOME -> "home"
+        SharedMobileMainDestination.SEARCH -> "search"
         SharedMobileMainDestination.LIBRARY -> "library"
         SharedMobileMainDestination.UNIFIED_LIBRARY -> "unified_library"
     }
@@ -154,6 +165,7 @@ private val SharedMobileMainDestination.androidRoute: String
 private val SharedMobileMainDestination.androidLabelRes: Int
     get() = when (this) {
         SharedMobileMainDestination.HOME -> R.string.nav_home
+        SharedMobileMainDestination.SEARCH -> R.string.nav_search
         SharedMobileMainDestination.LIBRARY -> R.string.nav_library
         SharedMobileMainDestination.UNIFIED_LIBRARY -> R.string.nav_unified_library
     }
@@ -161,6 +173,7 @@ private val SharedMobileMainDestination.androidLabelRes: Int
 private val SharedMobileMainDestination.androidIconRes: Int
     get() = when (this) {
         SharedMobileMainDestination.HOME -> R.drawable.home
+        SharedMobileMainDestination.SEARCH -> R.drawable.home
         SharedMobileMainDestination.LIBRARY,
         SharedMobileMainDestination.UNIFIED_LIBRARY -> R.drawable.library_books
     }

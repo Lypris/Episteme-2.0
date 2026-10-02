@@ -109,7 +109,7 @@ class FolderSyncWorker(
         private const val DISCOVER_FLUSH_SIZE = 200
         private const val PROGRESS_REPORT_INTERVAL = 100
 
-        // 白い熊: the full reconciliation reads every per-book sidecar and takes minutes on a
+        // Episteme: the full reconciliation reads every per-book sidecar and takes minutes on a
         // large library. Chaining it behind every discovery pass meant the next rescan blocked
         // on syncMutex until it finished — 25 s of spinner before the walk could even start.
         // It now runs at most this often; a manual "Scan All" still forces one at any time.
@@ -354,7 +354,7 @@ class FolderSyncWorker(
         }
 
         return withContext(Dispatchers.IO) {
-            // 白い熊: a discovery pass deliberately runs OUTSIDE syncMutex. It only inserts books
+            // Episteme: a discovery pass deliberately runs OUTSIDE syncMutex. It only inserts books
             // the folder does not have yet, and a concurrent reconciliation computes its removals
             // from a snapshot taken before those rows existed, so it cannot delete them. Taking
             // the lock only made the rescan button wait out whatever slow pass held it.

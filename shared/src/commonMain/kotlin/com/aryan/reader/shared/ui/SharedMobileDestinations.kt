@@ -29,6 +29,7 @@ enum class SharedMobileAppDestination(val route: String) {
 /** Android's source-of-truth main-screen order, shared by both phone hosts. */
 enum class SharedMobileMainDestination {
     HOME,
+    SEARCH,
     LIBRARY,
     UNIFIED_LIBRARY;
 

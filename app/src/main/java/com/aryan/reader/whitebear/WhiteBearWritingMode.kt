@@ -3,7 +3,7 @@ package com.aryan.reader.whitebear
 import android.content.Context
 
 /**
- * 白い熊 UI: per-book writing-direction preference for the WebView reader.
+ * Episteme UI: per-book writing-direction preference for the WebView reader.
  * AUTO respects the book's own CSS (Japanese tategaki books render vertically),
  * VERTICAL forces vertical-rl columns, HORIZONTAL forces Western horizontal layout.
  */

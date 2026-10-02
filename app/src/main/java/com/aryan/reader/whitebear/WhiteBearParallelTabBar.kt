@@ -45,7 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 
 /**
- * 白い熊 UI: parallel-reading tab bar shown under the reader's top bar while the chrome is
+ * Episteme UI: parallel-reading tab bar shown under the reader's top bar while the chrome is
  * visible. Tap a tab to switch books; long-press then drag horizontally to reorder; each
  * tab carries a three-dot menu (remove from set, file info). A trailing "＋" tab arms
  * pick-from-library mode to add another book (max 3).
@@ -185,7 +185,7 @@ fun WhiteBearParallelTabBar(
             }
         }
         if (tabs.size >= 2) {
-            // 白い熊 UI: same-screen layout chooser for a 2–3-book set. Layouts needing
+            // Episteme UI: same-screen layout chooser for a 2–3-book set. Layouts needing
             // more books than the set has are hidden; dividers between panes are draggable.
             var splitMenuOpen by remember { mutableStateOf(false) }
             Box(modifier = Modifier.weight(0.22f)) {

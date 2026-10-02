@@ -669,7 +669,7 @@ open class MainViewModel(application: Application) : AndroidViewModel(applicatio
                     AddBooksSource.UNSHELVED
                 },
             ),
-            mainScreenStartPage = prefs.getInt(KEY_MAIN_SCREEN_START_PAGE, 0).coerceIn(0, 2),
+            mainScreenStartPage = migratedMainScreenPage(),
             unifiedLibrarySection = prefs.getInt(KEY_UNIFIED_LIBRARY_SECTION, 0)
                 .coerceIn(0, 4),
             unifiedLibraryListView = prefs.getBoolean(KEY_UNIFIED_LIBRARY_LIST_VIEW, false),
@@ -847,6 +847,24 @@ open class MainViewModel(application: Application) : AndroidViewModel(applicatio
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = _internalState.value
     )
+
+    val dashboard: StateFlow<DashboardBooks> = uiState.map { it.rawLibraryFiles }
+        .distinctUntilChanged()
+        .map { books ->
+            withContext(Dispatchers.IO) {
+                val dates = appContext.getSharedPreferences("dashboard_added_dates", Context.MODE_PRIVATE)
+                val initial = !dates.getBoolean("initialized", false)
+                val editor = dates.edit()
+                val addedAt = books.associate { book ->
+                    val key = "book_${book.bookId}"
+                    val date = dates.getLong(key, 0L).takeIf { it > 0L }
+                        ?: (if (initial) book.timestamp else System.currentTimeMillis()).also { editor.putLong(key, it) }
+                    book.bookId to date
+                }
+                if (books.isNotEmpty()) editor.putBoolean("initialized", true).apply()
+                dashboardBooks(books, addedAt)
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DashboardBooks())
 
     private fun ReaderScreenState.withSharedLibraryAction(action: SharedLibraryAction): ReaderScreenState {
         return reduceLibraryAction(
@@ -1693,7 +1711,7 @@ open class MainViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     /**
-     * 白い熊 UI: one-shot-per-book pass that reads the embedded subjects/genres of every
+     * Episteme UI: one-shot-per-book pass that reads the embedded subjects/genres of every
      * library book (EPUB dc:subject, MOBI EXTH subject, FB2 genre) and assigns them as
      * library tags. Processed book ids are remembered in a fork-local pref, so each new
      * book is picked up on the next start and nothing is scanned twice.
@@ -1783,6 +1801,17 @@ open class MainViewModel(application: Application) : AndroidViewModel(applicatio
             FolderAnnotationExportWorker.scheduleAllPending(appContext)
         }
         backfillEmbeddedSubjectTags()
+        // Resume text-only backfills even when the foreground folder discovery throttles
+        // its full sync. Room migration has already marked only comic text as pending.
+        viewModelScope.launch(Dispatchers.IO) {
+            if (recentFilesRepository.hasFolderBooksNeedingTextMetadata()) {
+                WorkManager.getInstance(appContext).enqueueUniqueWork(
+                    MetadataExtractionWorker.WORK_NAME,
+                    ExistingWorkPolicy.KEEP,
+                    OneTimeWorkRequestBuilder<MetadataExtractionWorker>().build()
+                )
+            }
+        }
 
         val locatorConverter = LocatorConverter(
             bookCacheDao,
@@ -1878,7 +1907,7 @@ open class MainViewModel(application: Application) : AndroidViewModel(applicatio
         }
 
         if (_internalState.value.syncedFolders.any { it.localSyncEnabled }) {
-            // 白い熊: discovery first so books added since the last run appear straight away;
+            // Episteme: discovery first so books added since the last run appear straight away;
             // the full sidecar reconciliation is chained behind it.
             triggerFolderSyncWorker(
                 metadataOnly = false,
@@ -2553,7 +2582,7 @@ open class MainViewModel(application: Application) : AndroidViewModel(applicatio
 
             val deletedPath = item.resolveDisplayPath(appContext, isOpdsStream = false)
 
-            // 白い熊 UI: remove the DB row FIRST so the library list updates instantly;
+            // Episteme UI: remove the DB row FIRST so the library list updates instantly;
             // the (slow) physical/SAF cleanup follows in the background.
             withContext(Dispatchers.IO) {
                 recentFilesRepository.deleteFilePermanently(listOf(bookId))
@@ -3632,6 +3661,38 @@ open class MainViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    /** shiroikuma-custom: mark the currently selected books as read (progress 100%). */
+    fun markSelectedAsRead() {
+        val itemsToMark = _internalState.value.contextualActionItems
+        if (itemsToMark.isEmpty()) return
+        val bookIds = SharedLibraryEditor.cleanBookIds(itemsToMark.map { it.bookId })
+        if (bookIds.isEmpty()) {
+            clearContextualAction()
+            return
+        }
+        viewModelScope.launch {
+            recentFilesRepository.markBooksAsRead(bookIds.toList())
+            clearContextualAction()
+            showBanner(appContext.getString(R.string.banner_marked_as_read, bookIds.size))
+        }
+    }
+
+    /** shiroikuma-custom: mark the currently selected books as unread (reset progress + position). */
+    fun markSelectedAsUnread() {
+        val itemsToMark = _internalState.value.contextualActionItems
+        if (itemsToMark.isEmpty()) return
+        val bookIds = SharedLibraryEditor.cleanBookIds(itemsToMark.map { it.bookId })
+        if (bookIds.isEmpty()) {
+            clearContextualAction()
+            return
+        }
+        viewModelScope.launch {
+            recentFilesRepository.markBooksAsUnread(bookIds.toList())
+            clearContextualAction()
+            showBanner(appContext.getString(R.string.banner_marked_as_unread, bookIds.size))
+        }
+    }
+
     fun getDriveSignInIntent(context: Context): Intent {
         return googleDriveRepository.getSignInIntent(context)
     }
@@ -4597,7 +4658,7 @@ open class MainViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     /**
-     * 白い熊: books added while the app sat in the background used to stay invisible until the
+     * Episteme: books added while the app sat in the background used to stay invisible until the
      * next cold start — the only automatic scan ran in this ViewModel's init. Coming back to
      * the foreground now runs a discovery pass, throttled so it cannot fire on every resume.
      */
@@ -4711,7 +4772,7 @@ open class MainViewModel(application: Application) : AndroidViewModel(applicatio
                 when (workInfo.state) {
                     WorkInfo.State.RUNNING, WorkInfo.State.ENQUEUED -> {
                         if (showFeedback) {
-                            // 白い熊: a static "Scanning…" banner is indistinguishable from a hang
+                            // Episteme: a static "Scanning…" banner is indistinguishable from a hang
                             // on a 9000-book folder, so report what the walk has covered so far.
                             val filesSeen = workInfo.progress.getInt(FolderSyncWorker.PROGRESS_FILES_SEEN, 0)
                             val newBooks = workInfo.progress.getInt(FolderSyncWorker.PROGRESS_NEW_BOOKS, 0)
@@ -4740,7 +4801,7 @@ open class MainViewModel(application: Application) : AndroidViewModel(applicatio
                     }
 
                     WorkInfo.State.SUCCEEDED -> {
-                        // 白い熊: report what the pass actually covered, and keep queued/blocked
+                        // Episteme: report what the pass actually covered, and keep queued/blocked
                         // time apart from scanning time — folding them together is what hid the
                         // 25-second stall behind an innocent-looking "scanned in 25 s".
                         val filesSeen = workInfo.outputData.getInt(FolderSyncWorker.OUTPUT_FILES_SEEN, 0)
@@ -8323,7 +8384,7 @@ open class MainViewModel(application: Application) : AndroidViewModel(applicatio
                 }
 
                 if (hasFolder) {
-                    // 白い熊: a metadata-only pass skips the folder walk entirely and can never
+                    // Episteme: a metadata-only pass skips the folder walk entirely and can never
                     // surface a newly added file, which made pull-to-refresh look broken.
                     rescanLibraryForNewBooks()
                 }
@@ -8796,8 +8857,18 @@ open class MainViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    private fun migratedMainScreenPage(): Int {
+        val oldPage = prefs.getInt(KEY_MAIN_SCREEN_START_PAGE, 0)
+        if (prefs.getBoolean("main_screen_four_tabs", false)) return oldPage.coerceIn(0, 3)
+        val page = when (oldPage) { 1 -> 2; 2 -> 3; else -> 0 }
+        // Persist the marker and remapped index together, before any landing-state write.
+        prefs.edit().putInt(KEY_MAIN_SCREEN_START_PAGE, page)
+            .putBoolean("main_screen_four_tabs", true).apply()
+        return page
+    }
+
     fun setMainScreenPage(page: Int) {
-        val sanitizedPage = page.coerceIn(0, 2)
+        val sanitizedPage = page.coerceIn(0, 3)
         if (_internalState.value.mainScreenStartPage == sanitizedPage) return
         _internalState.update {
             it.copy(
@@ -8838,7 +8909,7 @@ open class MainViewModel(application: Application) : AndroidViewModel(applicatio
         _internalState.update {
             it.copy(
                 shelfState = it.shelfState.reduce(AppShelfAction.ShelfOpened(id)),
-                mainScreenStartPage = 1,
+                mainScreenStartPage = 2,
                 libraryState = it.libraryState.reduce(SharedLibraryAction.LibraryPageChanged(1)),
             )
         }
@@ -9254,7 +9325,7 @@ open class MainViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun navigateToFolderSync() {
-        setMainScreenPage(1)
+        setMainScreenPage(2)
         setLibraryScreenPage(2)
     }
 
@@ -9504,13 +9575,29 @@ open class MainViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     /**
-     * 白い熊 UI: reads the extra embedded metadata (publisher, language, publication date,
+     * Episteme UI: reads the extra embedded metadata (publisher, language, publication date,
      * rating, ISBN) live from the book file for the details dialog. EPUB/MOBI/FB2 only.
      */
     suspend fun getBookExtraMetadata(item: RecentFileItem): com.aryan.reader.whitebear.WhiteBearExtraMetadata =
         withContext(Dispatchers.IO) {
             val uri = item.uriString?.toUri()
                 ?: return@withContext com.aryan.reader.whitebear.WhiteBearExtraMetadata()
+            if (item.type in setOf(FileType.CBZ, FileType.CBR, FileType.CB7, FileType.CBT)) {
+                val comic = ComicInfoExtractor.extract(uri, appContext)
+                    ?: return@withContext com.aryan.reader.whitebear.WhiteBearExtraMetadata()
+                return@withContext com.aryan.reader.whitebear.WhiteBearExtraMetadata(
+                    publisher = comic.publisher,
+                    language = comic.languageISO,
+                    publicationDate = comic.publicationDate,
+                    comicWriter = comic.writer,
+                    comicPenciller = comic.penciller,
+                    comicColorist = comic.colorist,
+                    comicGenre = comic.genre,
+                    comicFormat = comic.format,
+                    comicAgeRating = comic.ageRating,
+                    comicPageCount = comic.pageCount
+                )
+            }
             if (item.type !in setOf(FileType.EPUB, FileType.MOBI, FileType.FB2)) {
                 return@withContext com.aryan.reader.whitebear.WhiteBearExtraMetadata()
             }
@@ -9531,7 +9618,7 @@ open class MainViewModel(application: Application) : AndroidViewModel(applicatio
             )
         }
 
-    /** 白い熊 UI: parses the companion book for the same-screen split pane (EPUB/MOBI/FB2). */
+    /** Episteme UI: parses the companion book for the same-screen split pane (EPUB/MOBI/FB2). */
     suspend fun loadWhiteBearCompanionBook(item: RecentFileItem): com.aryan.reader.epub.EpubBook? {
         val uri = item.uriString?.toUri() ?: return null
         return runCatching {
@@ -9541,7 +9628,7 @@ open class MainViewModel(application: Application) : AndroidViewModel(applicatio
         }.getOrNull()
     }
 
-    /** 白い熊 UI: persists the split pane's reading position when the pane goes away. */
+    /** Episteme UI: persists the split pane's reading position when the pane goes away. */
     fun saveWhiteBearCompanionPosition(item: RecentFileItem, locator: Locator) {
         viewModelScope.launch(Dispatchers.IO) {
             val uriString = item.uriString ?: return@launch
@@ -9558,7 +9645,7 @@ open class MainViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    /** 白い熊 UI: parallel-reading flip — open the neighbouring book at its saved position. */
+    /** Episteme UI: parallel-reading flip — open the neighbouring book at its saved position. */
     fun openBookForParallelFlip(targetBookId: String) {
         viewModelScope.launch {
             val item = recentFilesRepository.getFileByBookId(targetBookId)
@@ -9568,6 +9655,24 @@ open class MainViewModel(application: Application) : AndroidViewModel(applicatio
             }
             showBanner("▶ ${item.cardTitle(false)}")
             onRecentFileClicked(item)
+        }
+    }
+
+    /** shiroikuma-custom: force-recreate every cover thumbnail from the source files. */
+    fun regenerateAllCovers() {
+        viewModelScope.launch {
+            recentFilesRepository.resetAllCoverMetadata()
+            val total = recentFilesRepository.countFolderBooksNeedingTextMetadata()
+            MetadataExtractionWorker.progressFlow.value = MetadataExtractionWorker.MetadataExtractionProgress(
+                isRunning = true,
+                total = total
+            )
+            val request = OneTimeWorkRequestBuilder<MetadataExtractionWorker>().build()
+            WorkManager.getInstance(appContext).enqueueUniqueWork(
+                MetadataExtractionWorker.WORK_NAME,
+                ExistingWorkPolicy.REPLACE,
+                request
+            )
         }
     }
 
@@ -9601,6 +9706,7 @@ open class MainViewModel(application: Application) : AndroidViewModel(applicatio
                     author = result.metadata.author,
                     seriesName = result.metadata.seriesName,
                     seriesIndex = result.metadata.seriesIndex,
+                    publicationDate = metadata.publicationDate,
                     description = result.metadata.description
                 )
                 val coverPath = result.cover?.let { cover ->
@@ -9624,7 +9730,7 @@ open class MainViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    /** 白い熊 UI: writes edited metadata into the PDF file and mirrors it to the library DB. */
+    /** Episteme UI: writes edited metadata into the PDF file and mirrors it to the library DB. */
     private suspend fun updatePdfBookMetadata(currentItem: RecentFileItem, metadata: BookMetadataEdit) {
         val bookId = currentItem.bookId
         val editResult = pdfMetadataFileEditor.writeMetadata(currentItem, metadata)
@@ -9638,6 +9744,7 @@ open class MainViewModel(application: Application) : AndroidViewModel(applicatio
                 author = result.author,
                 seriesName = metadata.seriesName,
                 seriesIndex = metadata.seriesIndex,
+                publicationDate = metadata.publicationDate,
                 description = result.description
             )
             recentFilesRepository.updateUserEditableMetadata(
@@ -10031,11 +10138,11 @@ open class MainViewModel(application: Application) : AndroidViewModel(applicatio
         internal const val KEY_SYNCED_FOLDER_URI = "synced_folder_uri"
         internal const val KEY_LAST_FOLDER_SCAN_TIME = "last_folder_scan_time"
 
-        // 白い熊: throttle for the rescan that runs when the app comes back to the foreground.
+        // Episteme: throttle for the rescan that runs when the app comes back to the foreground.
         private const val KEY_LAST_AUTO_DISCOVER_TIME = "last_auto_discover_time"
         private const val AUTO_DISCOVER_MIN_INTERVAL_MS = 10 * 60 * 1000L
 
-        // Below this, the time a scan spent queued is not worth putting in front of 白い熊.
+        // Below this, the time a scan spent queued is not worth putting in front of Episteme.
         private const val NOTABLE_SCAN_WAIT_MS = 1_000L
         internal const val KEY_PINNED_HOME = "pinned_home_books"
         internal const val KEY_PINNED_LIBRARY = "pinned_library_books"

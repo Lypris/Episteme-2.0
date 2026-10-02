@@ -11,7 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
 /**
- * Fork-local (白い熊) UI customization. Everything lives in its own prefs file and its own
+ * Fork-local (Episteme) UI customization. Everything lives in its own prefs file and its own
  * package so upstream rebases never conflict with it.
  */
 enum class WhiteBearSlot(val key: String, val label: String, val defaultArgb: Int) {

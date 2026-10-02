@@ -7,14 +7,14 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
-/** Fork-local (白い熊) library view settings: list/grid layout and grid metrics. */
+/** Fork-local (Episteme) library view settings: list/grid layout and grid metrics. */
 class WhiteBearLibraryState private constructor(private val prefs: SharedPreferences) {
 
-    var gridLayout by mutableStateOf(prefs.getBoolean(KEY_GRID_LAYOUT, false))
+    var gridLayout by mutableStateOf(prefs.getBoolean(KEY_GRID_LAYOUT, true))
         private set
 
     /** Cover thumbnail height in dp; the grid cell width follows from the cover aspect. */
-    var thumbnailHeight by mutableFloatStateOf(prefs.getFloat(KEY_THUMB_HEIGHT, 180f))
+    var thumbnailHeight by mutableFloatStateOf(prefs.getFloat(KEY_THUMB_HEIGHT, 252f))
         private set
 
     var titleFontSize by mutableFloatStateOf(prefs.getFloat(KEY_TITLE_SIZE, 14f))

@@ -23,6 +23,8 @@ import com.aryan.reader.shared.parseSharedDocumentXmlMetadata
 import com.aryan.reader.shared.sharedDocumentMetadataArchivePath
 import com.aryan.reader.whitebear.WhiteBearPathAccess
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
@@ -44,6 +46,18 @@ class MetadataExtractionWorker(
     private val contentThumbnailGenerator = ContentThumbnailGenerator(appContext)
     private val authRepository = AuthRepository(appContext)
 
+    /** shiroikuma-custom: live progress of a cover/metadata regeneration pass,
+     *  surfaced to the library UI. */
+    data class MetadataExtractionProgress(
+        val isRunning: Boolean = false,
+        val processed: Int = 0,
+        val total: Int = 0,
+        val coversUpdated: Int = 0,
+        val failed: Int = 0,
+        val completed: Boolean = false,
+        val failedSamples: List<String> = emptyList()
+    )
+
     companion object {
         const val WORK_NAME = "MetadataExtractionWorker"
         const val KEY_SOURCE_FOLDER_URI = "key_source_folder_uri"
@@ -51,6 +65,10 @@ class MetadataExtractionWorker(
         private const val METADATA_DB_BATCH_SIZE = 100
         private const val METADATA_WORKER_BOOK_BATCH_SIZE = 300
         private const val METADATA_PROGRESS_LOG_EVERY = 250
+        private const val MAX_FAILED_SAMPLES = 200
+
+        val progressFlow = MutableStateFlow(MetadataExtractionProgress())
+
         private val TEXT_METADATA_TYPES = setOf(
             FileType.PDF,
             FileType.EPUB,
@@ -58,7 +76,7 @@ class MetadataExtractionWorker(
             FileType.FB2,
             FileType.ODT,
             FileType.FODT,
-            FileType.DOCX
+            FileType.DOCX, FileType.CBZ, FileType.CBR, FileType.CB7, FileType.CBT
         )
         private val CONTENT_THUMBNAIL_TYPES = SharedFileCapabilities.readableTypesFor(ReaderPlatform.ANDROID) - FileType.EPUB
     }
@@ -239,6 +257,10 @@ class MetadataExtractionWorker(
                                 TextMetadata()
                             }
                         }
+                        FileType.CBZ,
+                        FileType.CBR,
+                        FileType.CB7,
+                        FileType.CBT -> parseComicMetadata(uri, item.displayName)
                         FileType.PDF -> parsePdfTextMetadata(uri)
                         FileType.ODT -> parseZipTextMetadata(uri, requireNotNull(sharedDocumentMetadataArchivePath(item.type)))
                         FileType.FODT -> parseFlatXmlTextMetadata(uri)
@@ -247,7 +269,7 @@ class MetadataExtractionWorker(
                         else -> TextMetadata()
                     }
 
-                    // 白い熊 UI: surface the file's embedded subjects/genres as library tags.
+                    // Episteme UI: surface the file's embedded subjects/genres as library tags.
                     if (metadata.subjects.isNotEmpty()) {
                         recentFilesRepository.assignEmbeddedSubjectTags(item.bookId, metadata.subjects)
                     }
@@ -256,13 +278,22 @@ class MetadataExtractionWorker(
                     val author = sanitizeAuthor(metadata.author)
                     val description = metadata.description?.trim()?.takeIf { it.isNotBlank() }
                     val seriesName = metadata.seriesName?.trim()?.takeIf { it.isNotBlank() }
-                    val seriesIndex = metadata.seriesIndex?.takeIf { it > 0.0 }
+                    val seriesIndex = metadata.seriesIndex?.takeIf { it >= 0.0 }
+                    val seriesNumber = metadata.seriesNumber?.trim()?.takeIf { it.isNotBlank() }
                     val sizeChanged = fileSize > 0L && fileSize != item.fileSize
                     val titleChanged = title != null && title != item.title
                     val authorChanged = author != null && author != item.author
                     val descriptionChanged = description != null && description != item.description
                     val seriesChanged = seriesName != null && seriesName != item.seriesName
                     val seriesIndexChanged = seriesIndex != null && seriesIndex != item.seriesIndex
+                    val publicationDate = metadata.publicationDate?.trim()?.takeIf { it.isNotBlank() }
+                    val publicationDateChanged = publicationDate != null && publicationDate != item.publicationDate
+                    val publisher = metadata.publisher?.trim()?.takeIf { it.isNotBlank() }
+                    val writer = metadata.writer?.trim()?.takeIf { it.isNotBlank() }
+                    val penciller = metadata.penciller?.trim()?.takeIf { it.isNotBlank() }
+                    val publisherChanged = publisher != null && publisher != item.publisher
+                    val writerChanged = writer != null && writer != item.writer
+                    val pencillerChanged = penciller != null && penciller != item.penciller
                     val coverPath = if (needsEmbeddedCover) {
                         metadata.cover?.let { cover ->
                             recentFilesRepository.saveEmbeddedCoverToCache(cover.bytes, uri, cover.extension)
@@ -288,7 +319,7 @@ class MetadataExtractionWorker(
                     val coverMetadataParsed = item.folderCoverMetadataParsed || needsEmbeddedCover || needsContentThumbnail
                     val textMetadataParsed = item.folderTextMetadataParsed || needsTextMetadata
 
-                    if (needsTextMetadata || needsEmbeddedCover || needsContentThumbnail || sizeChanged || titleChanged || authorChanged || descriptionChanged || seriesChanged || seriesIndexChanged || coverChanged) {
+                    if (needsTextMetadata || needsEmbeddedCover || needsContentThumbnail || sizeChanged || titleChanged || authorChanged || descriptionChanged || seriesChanged || seriesIndexChanged || publicationDateChanged || publisherChanged || writerChanged || pencillerChanged || coverChanged) {
                         pendingUpdates.add(
                             item.copy(
                                 coverImagePath = coverPath ?: item.coverImagePath,
@@ -297,12 +328,17 @@ class MetadataExtractionWorker(
                                 description = description ?: item.description,
                                 seriesName = seriesName ?: item.seriesName,
                                 seriesIndex = seriesIndex ?: item.seriesIndex,
+                                seriesNumber = seriesNumber ?: item.seriesNumber,
+                                publicationDate = publicationDate ?: item.publicationDate,
+                                publisher = publisher ?: item.publisher,
+                                writer = writer ?: item.writer,
+                                penciller = penciller ?: item.penciller,
                                 fileSize = if (fileSize > 0L) fileSize else item.fileSize,
                                 folderTextMetadataParsed = textMetadataParsed,
                                 folderCoverMetadataParsed = coverMetadataParsed
                             )
                         )
-                        if (sizeChanged || titleChanged || authorChanged || descriptionChanged || seriesChanged || seriesIndexChanged || coverChanged) {
+                        if (sizeChanged || titleChanged || authorChanged || descriptionChanged || seriesChanged || seriesIndexChanged || publicationDateChanged || publisherChanged || writerChanged || pencillerChanged || coverChanged) {
                             updated++
                         }
                         if (coverChanged) coversUpdated++
@@ -312,6 +348,14 @@ class MetadataExtractionWorker(
                     }
 
                     processed++
+                    if (progressFlow.value.isRunning) {
+                        progressFlow.update {
+                            it.copy(
+                                processed = it.processed + 1,
+                                coversUpdated = it.coversUpdated + if (coverChanged) 1 else 0
+                            )
+                        }
+                    }
                     if (processed % METADATA_PROGRESS_LOG_EVERY == 0) {
                         ReaderPerfLog.d(
                             "MetadataWorker progress mode=metadata processed=$processed updated=$updated covers=$coversUpdated failed=$failed"
@@ -332,7 +376,27 @@ class MetadataExtractionWorker(
                             "errorClass=${cloudFolderErrorClass(e)} errorStatus=${cloudFolderErrorStatus(e)}",
                     )
                     Timber.tag("MetadataWorker").e(e, "Failed metadata extraction for ${item.displayName}")
-                    // Leave parsed flags unchanged so a transient read/parser failure can retry.
+                    if (progressFlow.value.isRunning) {
+                        progressFlow.update {
+                            it.copy(
+                                failed = it.failed + 1,
+                                failedSamples = (it.failedSamples + item.displayName).take(MAX_FAILED_SAMPLES)
+                            )
+                        }
+                    }
+                    // Always mark both flags parsed so a book that cannot be processed (corrupt
+                    // archive, missing file, unsupported format) never re-queues — otherwise the
+                    // whole scan loops forever on the same dead items. A regeneration pass resets
+                    // the flags to retry them.
+                    pendingUpdates.add(
+                        item.copy(
+                            folderTextMetadataParsed = true,
+                            folderCoverMetadataParsed = true
+                        )
+                    )
+                    if (pendingUpdates.size >= METADATA_DB_BATCH_SIZE) {
+                        flushUpdates()
+                    }
                 }
             }
 
@@ -344,6 +408,8 @@ class MetadataExtractionWorker(
                 recentFilesRepository.hasFolderBooksNeedingTextMetadata(sourceFolderUri)
             if (nextBatchEnqueued) {
                 enqueueNextBatch(sourceFolderUri, resolvedRootId)
+            } else if (progressFlow.value.isRunning) {
+                progressFlow.value = progressFlow.value.copy(isRunning = false, completed = !isStopped)
             }
 
             ReaderPerfLog.i(
@@ -572,7 +638,7 @@ class MetadataExtractionWorker(
                 PdfiumEngineProvider.withPdfium {
                     PdfiumCoreProvider.core.newDocument(pfd).use { pdfDocument ->
                         val meta = pdfDocument.getDocumentMeta()
-                        // 白い熊 UI: PDF Keywords become library tags, Subject the summary.
+                        // Episteme UI: PDF Keywords become library tags, Subject the summary.
                         TextMetadata(
                             title = meta.title,
                             author = meta.author,
@@ -606,6 +672,32 @@ class MetadataExtractionWorker(
         return String(readBytes(), Charsets.UTF_8)
     }
 
+    /** Episteme custom: comic metadata (CBZ/CBR/CB7/CBT) — publication date, publisher,
+     *  writer and penciller read from ComicInfo.xml (ComicRack standard) inside the archive,
+     *  falling back to a 4-digit year found in the file name. */
+    private suspend fun parseComicMetadata(uri: android.net.Uri, displayName: String): TextMetadata {
+        val comic = withContext(Dispatchers.IO) {
+            ComicInfoExtractor.extract(uri, appContext)
+        }
+        if (comic == null) {
+            return TextMetadata(publicationDate = yearFromFileName(displayName))
+        }
+        return TextMetadata(
+            seriesName = comic.series,
+            seriesNumber = comic.number,
+            seriesIndex = comic.integralSeriesIndex,
+            publicationDate = comic.publicationDate,
+            publisher = comic.publisher,
+            writer = comic.writer,
+            penciller = comic.penciller
+        )
+    }
+
+    private fun yearFromFileName(displayName: String): String? {
+        return Regex("""\b(1[89]\d{2}|20\d{2})\b""")
+            .find(displayName)?.groupValues?.getOrNull(1)
+    }
+
     private fun sanitizeTitle(value: String?): String? {
         return value
             ?.trim()
@@ -625,6 +717,8 @@ class MetadataExtractionWorker(
             description = description,
             seriesName = seriesName,
             seriesIndex = seriesIndex,
+            publicationDate = publicationDate,
+            publisher = publisher,
             cover = cover,
             subjects = subjects
         )
@@ -636,6 +730,11 @@ class MetadataExtractionWorker(
         val description: String? = null,
         val seriesName: String? = null,
         val seriesIndex: Double? = null,
+        val seriesNumber: String? = null,
+        val publicationDate: String? = null,
+        val publisher: String? = null,
+        val writer: String? = null,
+        val penciller: String? = null,
         val cover: EmbeddedEbookCover? = null,
         val subjects: List<String> = emptyList()
     )

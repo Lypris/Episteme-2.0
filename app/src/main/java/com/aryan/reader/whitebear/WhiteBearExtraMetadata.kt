@@ -12,9 +12,19 @@ data class WhiteBearExtraMetadata(
     val publicationDate: String? = null,
     /** Calibre rating, 0–10 (i.e. stars × 2). */
     val rating: Double? = null,
-    val isbn: String? = null
+    val isbn: String? = null,
+    /** shiroikuma-custom: ComicInfo.xml fields, comic archives only. */
+    val comicWriter: String? = null,
+    val comicPenciller: String? = null,
+    val comicColorist: String? = null,
+    val comicGenre: String? = null,
+    val comicFormat: String? = null,
+    val comicAgeRating: String? = null,
+    val comicPageCount: String? = null
 ) {
     val hasAny: Boolean
         get() = publisher != null || language != null || publicationDate != null ||
-            rating != null || isbn != null
+            rating != null || isbn != null || comicWriter != null || comicPenciller != null ||
+            comicColorist != null || comicGenre != null || comicFormat != null ||
+            comicAgeRating != null || comicPageCount != null
 }

@@ -26,6 +26,7 @@ fun SharedMobileMainScaffold(
         Text(
             when (destination) {
                 SharedMobileMainDestination.HOME -> readerString("nav_home", "Home")
+                SharedMobileMainDestination.SEARCH -> readerString("nav_search", "Search")
                 SharedMobileMainDestination.LIBRARY -> readerString("nav_library", "Library")
                 SharedMobileMainDestination.UNIFIED_LIBRARY -> readerString("nav_unified_library", "Library Beta")
             }
@@ -34,12 +35,14 @@ fun SharedMobileMainScaffold(
     destinationIcon: @Composable (SharedMobileMainDestination) -> Unit = { destination ->
         val label = when (destination) {
             SharedMobileMainDestination.HOME -> readerString("nav_home", "Home")
+            SharedMobileMainDestination.SEARCH -> readerString("nav_search", "Search")
             SharedMobileMainDestination.LIBRARY -> readerString("nav_library", "Library")
             SharedMobileMainDestination.UNIFIED_LIBRARY -> readerString("nav_unified_library", "Library Beta")
         }
         Icon(
             imageVector = when (destination) {
                 SharedMobileMainDestination.HOME -> Icons.Default.Home
+                SharedMobileMainDestination.SEARCH -> Icons.Default.Search
                 SharedMobileMainDestination.LIBRARY -> Icons.AutoMirrored.Filled.LibraryBooks
                 SharedMobileMainDestination.UNIFIED_LIBRARY -> Icons.AutoMirrored.Filled.LibraryBooks
             },
@@ -61,6 +64,7 @@ fun SharedMobileMainScaffold(
                         modifier = Modifier.testTag(
                             when (destination) {
                                 SharedMobileMainDestination.HOME -> "MobileNavHome"
+                                SharedMobileMainDestination.SEARCH -> "MobileNavSearch"
                                 SharedMobileMainDestination.LIBRARY -> "MobileNavLibrary"
                                 SharedMobileMainDestination.UNIFIED_LIBRARY -> "MobileNavUnifiedLibrary"
                             }

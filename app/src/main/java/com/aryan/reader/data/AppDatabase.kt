@@ -51,8 +51,9 @@ import com.aryan.reader.audiobook.BookTtsListeningProgressEntity
         CloudFolderLocalInventoryEntity::class,
         CloudFolderMetadataOutboxEntity::class,
         CloudBookDeleteIntentEntity::class,
+        WishlistEntity::class,
     ],
-    version = 39,
+    version = 40,
     exportSchema = false
 )
 @TypeConverters(FileTypeConverter::class)
@@ -66,6 +67,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun pendingFolderAnnotationExportDao(): PendingFolderAnnotationExportDao
     abstract fun cloudFolderSyncDao(): CloudFolderSyncDao
     abstract fun cloudBookDeleteDao(): CloudBookDeleteDao
+    abstract fun wishlistDao(): WishlistDao
 
     companion object {
         @Volatile
@@ -984,6 +986,37 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** Fork (Episteme 2.0): discovery wishlist table + comic metadata columns. */
+        val MIGRATION_39_40 = object : Migration(39, 40) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `wishlist` (
+                        `id` TEXT NOT NULL PRIMARY KEY,
+                        `title` TEXT NOT NULL,
+                        `series` TEXT NOT NULL,
+                        `tome` TEXT NOT NULL,
+                        `authors` TEXT NOT NULL,
+                        `publisher` TEXT NOT NULL,
+                        `date` TEXT NOT NULL,
+                        `isbn` TEXT NOT NULL,
+                        `coverUrl` TEXT NOT NULL,
+                        `summary` TEXT NOT NULL,
+                        `price` TEXT NOT NULL,
+                        `bedethequeUrl` TEXT NOT NULL,
+                        `addedAt` INTEGER NOT NULL,
+                        `metadataJson` TEXT NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("ALTER TABLE recent_files ADD COLUMN seriesNumber TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE recent_files ADD COLUMN publicationDate TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE recent_files ADD COLUMN publisher TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE recent_files ADD COLUMN writer TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE recent_files ADD COLUMN penciller TEXT DEFAULT NULL")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 CloudFolderPrivateStateMigrator.importLegacyState(context.applicationContext)
@@ -1002,7 +1035,7 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28,
                         MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32,
                         MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36,
-                        MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39
+                        MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40
                     )
                     .fallbackToDestructiveMigration(false)
                     .build()

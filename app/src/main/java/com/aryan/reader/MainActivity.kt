@@ -85,7 +85,7 @@ open class MainActivity : AppCompatActivity() {
     @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
-        // 白い熊: allow chrome://inspect debugging of the reader WebView over adb.
+        // Episteme: allow chrome://inspect debugging of the reader WebView over adb.
         android.webkit.WebView.setWebContentsDebuggingEnabled(true)
         installSplashScreen()
         enableEdgeToEdge()
@@ -178,7 +178,7 @@ open class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        // 白い熊: books dropped into a synced folder while the app sat in the background stay
+        // Episteme: books dropped into a synced folder while the app sat in the background stay
         // invisible until something scans. The ViewModel throttles this to a rescan every
         // 10 minutes at most, so returning to the app repeatedly costs nothing. A one-off
         // external file open is not a library visit, so it does not trigger one.

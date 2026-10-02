@@ -20,7 +20,7 @@ class LibraryProjector {
 
         return LibraryScreenModel(
             books = sorted,
-            shelves = buildShelves(state.books),
+            shelves = buildShelves(state.books, state.sortOrder),
             selectedBooks = state.books.filter { it.id in state.selectedBookIds },
             filters = state.filters,
             searchQuery = state.searchQuery,
@@ -66,6 +66,12 @@ class LibraryProjector {
             SortOrder.DATE_ADDED_OLDEST -> books.sortedBy { it.libraryFileDateTimestamp() }
             SortOrder.TITLE_ASC -> books.sortedBy { it.title?.lowercase() ?: it.displayName.lowercase() }
             SortOrder.AUTHOR_ASC -> books.sortedWith(compareBy(nullsLast()) { it.author?.lowercase() })
+            SortOrder.SERIES_ASC -> books.sortedWith(
+                compareBy<BookItem, String?>(
+                    nullsLast(String.CASE_INSENSITIVE_ORDER)
+                ) { it.seriesName?.trim()?.takeIf { s -> s.isNotEmpty() } }
+                    .thenBy { it.seriesIndex ?: Double.MAX_VALUE }
+            )
             SortOrder.PERCENT_ASC -> books.sortedBy { it.progressPercentage ?: 0f }
             SortOrder.PERCENT_DESC -> books.sortedByDescending { it.progressPercentage ?: 0f }
             SortOrder.SIZE_ASC -> books.sortedBy { it.fileSize }
@@ -100,7 +106,7 @@ class LibraryProjector {
         }
     }
 
-    fun buildShelves(books: List<BookItem>): List<Shelf> {
+    fun buildShelves(books: List<BookItem>, sortOrder: SortOrder = SortOrder.RECENT): List<Shelf> {
         val seriesShelves = books
             .filter { !it.seriesName.isNullOrBlank() }
             .groupBy { it.seriesName.orEmpty() }
@@ -110,7 +116,7 @@ class LibraryProjector {
                     id = "series_$series",
                     name = series,
                     type = ShelfType.SERIES,
-                    books = seriesBooks.sortedBy { it.seriesIndex ?: 999.0 }
+                    books = sortBooks(seriesBooks, sortOrder)
                 )
             }
 

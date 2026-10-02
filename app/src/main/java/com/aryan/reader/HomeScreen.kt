@@ -522,6 +522,8 @@ fun HomeScreen(
                                 onExportAnnotationsClick = selectedContextItems.singleOrNull()
                                     ?.let { item -> { showAnnotationExportFormatDialogFor = item } },
                                 onPinClick = { viewModel.togglePinForContextualItems(isHome = true) },
+                                onMarkReadClick = { viewModel.markSelectedAsRead() },
+                                onMarkUnreadClick = { viewModel.markSelectedAsUnread() },
                                 onDeleteClick = { showDeleteConfirmDialog = true },
                                 onSelectAllClick = { viewModel.selectAllRecentFiles() },
                                 compactSelectionActions = true,
@@ -877,11 +879,21 @@ fun RecentFileCard(
                     )
         },
         fileTypeBadge = { compact ->
-                    FileTypeBadge(
-                        type = item.type,
-                        overlay = true,
-                compact = compact,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        FileTypeBadge(
+                            type = item.type,
+                            overlay = true,
+                            compact = compact,
+                        )
+                        publicationYearOf(item.publicationDate)?.let { year ->
+                            Spacer(modifier = Modifier.width(4.dp))
+                            PublicationYearBadge(
+                                year = year,
+                                overlay = true,
+                                compact = compact,
+                            )
+                        }
+                    }
         },
     )
 }

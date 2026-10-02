@@ -99,6 +99,7 @@ import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.FileOpen
 import androidx.compose.material.icons.outlined.Gavel
 import androidx.compose.material.icons.outlined.Policy
@@ -122,6 +123,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -178,6 +180,7 @@ import com.aryan.reader.shared.ui.SharedMobileContextualActionLabels
 import timber.log.Timber
 import java.io.File
 import java.text.SimpleDateFormat
+import androidx.appcompat.app.AppCompatDelegate
 import java.util.Date
 import java.util.Locale
 import kotlin.math.log10
@@ -329,57 +332,228 @@ fun ContextualTopAppBar(
     onAddToShelfClick: (() -> Unit)? = null,
     onSelectAllClick: (() -> Unit)? = null,
     onPinClick: (() -> Unit)? = null,
+    onMarkReadClick: (() -> Unit)? = null,
+    onMarkUnreadClick: (() -> Unit)? = null,
     onDeleteClick: () -> Unit,
     compactSelectionActions: Boolean = false,
     overflowDeleteLabelRes: Int = R.string.action_delete,
     onClearSelectionClick: (() -> Unit)? = null,
     onParallelReadClick: (() -> Unit)? = null,
 ) {
-    SharedMobileContextualActionBar(
-        selectedItemCount = selectedItemCount,
-        labels = SharedMobileContextualActionLabels(
-            selectedCount = stringResource(R.string.items_selected_count, selectedItemCount),
-            clearSelection = stringResource(R.string.clear_selection),
-            info = stringResource(R.string.info),
-            pin = stringResource(R.string.pin_unpin),
-            selectAll = stringResource(R.string.select_all),
-            delete = stringResource(overflowDeleteLabelRes),
-            moreOptions = stringResource(R.string.content_desc_more_options),
-            tag = stringResource(R.string.content_desc_tag),
-            addToShelf = stringResource(R.string.desktop_add_to_shelf),
-            save = stringResource(R.string.action_save_copy_to_device),
-            share = stringResource(R.string.action_share),
-            exportAnnotations = stringResource(R.string.action_export_annotations),
-            clear = stringResource(R.string.action_clear),
-        ),
-        onNavigateBack = onNavIconClick,
-        onDelete = onDeleteClick,
-        compact = compactSelectionActions,
-        onInfo = onInfoClick,
-        onSave = onSaveClick,
-        onShare = onShareClick,
-        onExportAnnotations = onExportAnnotationsClick,
-        onTag = onTagClick,
-        onAddToShelf = onAddToShelfClick,
-        onSelectAll = onSelectAllClick,
-        onPin = onPinClick,
-        onClear = onClearSelectionClick,
-        leadingActions = onParallelReadClick?.let { parallel ->
-            {
-                // 白い熊 UI: pair the selected 2–3 books for parallel reading.
-                IconButton(onClick = parallel) {
+    CustomTopAppBar(
+        title = {
+            Text(
+                text = stringResource(R.string.items_selected_count, selectedItemCount),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        },
+        navigationIcon = {
+            IconButton(onClick = onNavIconClick) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.clear_selection))
+            }
+        },
+        actions = {
+            // Episteme UI: pair the selected 2–3 books for parallel reading.
+            if (onParallelReadClick != null) {
+                IconButton(onClick = onParallelReadClick) {
                     Icon(painterResource(id = R.drawable.wb_parallel), contentDescription = "Parallel read")
                 }
             }
-        },
-        tagIcon = { contentDescription ->
-            Icon(
-                painterResource(R.drawable.tag),
-                contentDescription = contentDescription,
-            )
-        },
+            if (compactSelectionActions) {
+                CompactSelectionActions(
+                    selectedItemCount = selectedItemCount,
+                    onInfoClick = onInfoClick,
+                    onPinClick = onPinClick,
+                    onSelectAllClick = onSelectAllClick,
+                    onTagClick = onTagClick,
+                    onAddToShelfClick = onAddToShelfClick,
+                    onSaveClick = onSaveClick,
+                    onShareClick = onShareClick,
+                    onExportAnnotationsClick = onExportAnnotationsClick,
+                    onMarkReadClick = onMarkReadClick,
+                    onMarkUnreadClick = onMarkUnreadClick,
+                    onClearSelectionClick = onClearSelectionClick ?: onNavIconClick,
+                    onDeleteClick = onDeleteClick,
+                    deleteLabelRes = overflowDeleteLabelRes
+                )
+            } else {
+                if (onTagClick != null) {
+                    IconButton(onClick = onTagClick) {
+                        Icon(painterResource(id = R.drawable.tag), contentDescription = stringResource(R.string.content_desc_tag))
+                    }
+                }
+                if (onPinClick != null) {
+                    IconButton(onClick = onPinClick) {
+                        Icon(Icons.Filled.PushPin, contentDescription = stringResource(R.string.pin_unpin))
+                    }
+                }
+                if (selectedItemCount == 1 && onInfoClick != null) {
+                    IconButton(onClick = onInfoClick) {
+                        Icon(Icons.Filled.Info, contentDescription = stringResource(R.string.info))
+                    }
+                }
+                if (selectedItemCount == 1 && onSaveClick != null) {
+                    IconButton(onClick = onSaveClick) {
+                        Icon(Icons.Filled.Save, contentDescription = stringResource(R.string.action_save_copy_to_device))
+                    }
+                }
+                if (selectedItemCount == 1 && onShareClick != null) {
+                    IconButton(onClick = onShareClick) {
+                        Icon(Icons.Filled.Share, contentDescription = stringResource(R.string.action_share))
+                    }
+                }
+                if (onSelectAllClick != null) {
+                    IconButton(onClick = onSelectAllClick) {
+                        Icon(Icons.Filled.SelectAll, contentDescription = stringResource(R.string.select_all))
+                    }
+                }
+                if (onMarkReadClick != null) {
+                    IconButton(onClick = onMarkReadClick) {
+                        Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.mark_as_read))
+                    }
+                }
+                if (onMarkUnreadClick != null) {
+                    IconButton(onClick = onMarkUnreadClick) {
+                        Icon(Icons.Filled.VisibilityOff, contentDescription = stringResource(R.string.mark_as_unread))
+                    }
+                }
+                IconButton(onClick = onDeleteClick) {
+                    Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.action_delete))
+                }
+            }
+        }
     )
 }
+
+@Composable
+private fun CompactSelectionActions(
+    selectedItemCount: Int,
+    onInfoClick: (() -> Unit)?,
+    onPinClick: (() -> Unit)?,
+    onSelectAllClick: (() -> Unit)?,
+    onTagClick: (() -> Unit)?,
+    onAddToShelfClick: (() -> Unit)?,
+    onSaveClick: (() -> Unit)?,
+    onShareClick: (() -> Unit)?,
+    onExportAnnotationsClick: (() -> Unit)?,
+    onMarkReadClick: (() -> Unit)?,
+    onMarkUnreadClick: (() -> Unit)?,
+    onClearSelectionClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+    deleteLabelRes: Int
+) {
+    var showMoreMenu by remember { mutableStateOf(false) }
+
+    if (selectedItemCount == 1 && onInfoClick != null) {
+        IconButton(onClick = onInfoClick) {
+            Icon(Icons.Filled.Info, contentDescription = stringResource(R.string.info))
+        }
+    }
+    if (onPinClick != null) {
+        IconButton(onClick = onPinClick) {
+            Icon(Icons.Filled.PushPin, contentDescription = stringResource(R.string.pin_unpin))
+        }
+    }
+    if (onSelectAllClick != null) {
+        IconButton(onClick = onSelectAllClick) {
+            Icon(Icons.Filled.SelectAll, contentDescription = stringResource(R.string.select_all))
+        }
+    }
+    IconButton(onClick = onDeleteClick) {
+        Icon(Icons.Filled.Delete, contentDescription = stringResource(deleteLabelRes))
+    }
+
+    Box {
+        IconButton(onClick = { showMoreMenu = true }) {
+            Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.content_desc_more_options))
+        }
+        DropdownMenu(
+            expanded = showMoreMenu,
+            onDismissRequest = { showMoreMenu = false }
+        ) {
+            onTagClick?.let { tag ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.content_desc_tag)) },
+                    leadingIcon = { Icon(painterResource(id = R.drawable.tag), contentDescription = null) },
+                    onClick = {
+                        showMoreMenu = false
+                        tag()
+                    }
+                )
+            }
+            onAddToShelfClick?.let { addToShelf ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.desktop_add_to_shelf)) },
+                    leadingIcon = { Icon(Icons.Filled.Folder, contentDescription = null) },
+                    onClick = {
+                        showMoreMenu = false
+                        addToShelf()
+                    }
+                )
+            }
+            if (selectedItemCount == 1 && onSaveClick != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.action_save_copy_to_device)) },
+                    leadingIcon = { Icon(Icons.Filled.Save, contentDescription = null) },
+                    onClick = {
+                        showMoreMenu = false
+                        onSaveClick()
+                    }
+                )
+            }
+            if (selectedItemCount == 1 && onShareClick != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.action_share)) },
+                    leadingIcon = { Icon(Icons.Filled.Share, contentDescription = null) },
+                    onClick = {
+                        showMoreMenu = false
+                        onShareClick()
+                    }
+                )
+            }
+            if (selectedItemCount == 1 && onExportAnnotationsClick != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.action_export_annotations)) },
+                    leadingIcon = { Icon(Icons.Filled.Save, contentDescription = null) },
+                    onClick = {
+                        showMoreMenu = false
+                        onExportAnnotationsClick()
+                    }
+                )
+            }
+            onMarkReadClick?.let { markRead ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.mark_as_read)) },
+                    leadingIcon = { Icon(Icons.Filled.Check, contentDescription = null) },
+                    onClick = {
+                        showMoreMenu = false
+                        markRead()
+                    }
+                )
+            }
+            onMarkUnreadClick?.let { markUnread ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.mark_as_unread)) },
+                    leadingIcon = { Icon(Icons.Filled.VisibilityOff, contentDescription = null) },
+                    onClick = {
+                        showMoreMenu = false
+                        markUnread()
+                    }
+                )
+            }
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.action_clear)) },
+                leadingIcon = { Icon(Icons.Filled.Close, contentDescription = null) },
+                onClick = {
+                    showMoreMenu = false
+                    onClearSelectionClick()
+                }
+            )
+        }
+    }
+}
+
 @Composable
 fun CustomTopAppBar(
     modifier: Modifier = Modifier,
@@ -500,7 +674,9 @@ fun FileInfoDialog(
         resolvedPath == "In-App Storage" -> stringResource(R.string.source_in_app)
         else -> resolvedPath.replace("Internal storage", stringResource(R.string.internal_storage))
     }
-    // 白い熊 UI: PDFs carry editable metadata too (info dictionary), not just EPUBs.
+    val hasOriginalMetadata = item.hasOriginalMetadata()
+    val hasMetadataChanges = item.hasMetadataChanges()
+    // Episteme UI: PDFs carry editable metadata too (info dictionary), not just EPUBs.
     val canEditEmbeddedMetadata = (item.type == FileType.EPUB || item.type == FileType.PDF) &&
         !isOpdsStream && item.uriString != null
     val isPdf = item.type == FileType.PDF
@@ -647,7 +823,7 @@ fun FileInfoDialog(
         onRestore = { onRestoreMetadata() },
     )
 
-    // 白い熊 UI: guarded delete — Cancel (left, filled) is the preselected action; Delete
+    // Episteme UI: guarded delete — Cancel (left, filled) is the preselected action; Delete
     // (right) is the plain destructive one. The dialog carries the yellow frame.
     if (showDeleteConfirmation && onDeleteBook != null) {
         val wbFrame = remember { com.aryan.reader.whitebear.WhiteBearUiState.get(context) }
@@ -685,6 +861,299 @@ fun FileInfoDialog(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun FileInfoTopBar(
+    title: String,
+    subtitle: String,
+    onClose: () -> Unit,
+    actions: @Composable RowScope.() -> Unit = {}
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(onClick = onClose) {
+            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.action_close))
+        }
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 8.dp)
+        ) {
+            Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        actions()
+    }
+}
+
+@Composable
+private fun BookMetadataInfoContent(
+    item: RecentFileItem,
+    usePdfFileNameAsDisplayName: Boolean,
+    formattedDate: String,
+    lastModifiedDate: String?,
+    pathText: String,
+    hasMetadataChanges: Boolean,
+    onCopy: (String) -> Unit,
+    onOpenTags: () -> Unit,
+    extraMetadata: com.aryan.reader.whitebear.WhiteBearExtraMetadata? = null
+) {
+    // Episteme custom: format dates in the app's selected language (AppCompatDelegate locales).
+    val appLocale = runCatching {
+        val locales = AppCompatDelegate.getApplicationLocales()
+        if (!locales.isEmpty) locales.get(0) ?: Locale.getDefault() else Locale.getDefault()
+    }.getOrDefault(Locale.getDefault())
+    // Episteme UI: the whole info body lives in a SelectionContainer, so every value —
+    // title, author, path, summary, tags — can be long-pressed, selected and copied.
+    SelectionContainer {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        item.cardTitle(usePdfFileNameAsDisplayName),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    item.author
+                        ?.takeIf { it.isNotBlank() && !it.equals("Unknown", ignoreCase = true) }
+                        ?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    val provenance = when {
+                        item.type == FileType.EPUB && hasMetadataChanges -> stringResource(R.string.metadata_provenance_epub_edited)
+                        item.type == FileType.EPUB -> stringResource(R.string.metadata_provenance_from_epub)
+                        !item.customName.isNullOrBlank() -> stringResource(R.string.metadata_provenance_display_name_changed)
+                        else -> stringResource(R.string.metadata_provenance_from_file)
+                    }
+                    Text(
+                        provenance,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (hasMetadataChanges) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            FileInfoSection(title = stringResource(R.string.section_metadata)) {
+                InfoRowDetailed(stringResource(R.string.label_title), item.title?.takeIf { it.isNotBlank() } ?: item.displayName, maxLines = 3)
+                item.author?.takeIf { it.isNotBlank() && !it.equals("Unknown", ignoreCase = true) }?.let {
+                    InfoRowDetailed(stringResource(R.string.author), it, maxLines = 2)
+                }
+                item.seriesLabel()?.let {
+                    InfoRowDetailed(stringResource(R.string.label_series), it, maxLines = 2)
+                }
+                extraMetadata?.publicationDate?.takeIf { it.isNotBlank() }?.let {
+                    InfoRowDetailed(stringResource(R.string.label_publication_date), formatPublicationDateForLocale(it, appLocale))
+                }
+                extraMetadata?.publisher?.takeIf { it.isNotBlank() }?.let {
+                    InfoRowDetailed(stringResource(R.string.label_publisher), it, maxLines = 2)
+                }
+                extraMetadata?.language?.takeIf { it.isNotBlank() }?.let {
+                    InfoRowDetailed(stringResource(R.string.label_language), it)
+                }
+                extraMetadata?.rating?.takeIf { it > 0.0 }?.let {
+                    InfoRowDetailed(stringResource(R.string.label_rating), formatBookRating(it))
+                }
+                extraMetadata?.isbn?.takeIf { it.isNotBlank() }?.let {
+                    InfoRowDetailed(stringResource(R.string.label_isbn), it, onCopy = { onCopy(it) })
+                }
+                InfoRowDetailed(stringResource(R.string.format), item.type.name)
+                InfoRowDetailed(stringResource(R.string.size), formatFileSize(item.fileSize))
+                InfoRowDetailed(stringResource(R.string.label_reading), item.readingProgressText(), maxLines = 2)
+            }
+
+            // shiroikuma-custom: ComicInfo.xml metadata for comic archives — every row is
+            // shown, with an em dash when the value is absent from the file.
+            if (item.type in setOf(FileType.CBZ, FileType.CBR, FileType.CB7, FileType.CBT)) {
+                FileInfoSection(title = stringResource(R.string.section_comic_info)) {
+                    InfoRowDetailed(stringResource(R.string.label_comic_writer), extraMetadata?.comicWriter?.takeIf { it.isNotBlank() } ?: "\u2014")
+                    InfoRowDetailed(stringResource(R.string.label_comic_penciller), extraMetadata?.comicPenciller?.takeIf { it.isNotBlank() } ?: "\u2014")
+                    InfoRowDetailed(stringResource(R.string.label_comic_colorist), extraMetadata?.comicColorist?.takeIf { it.isNotBlank() } ?: "\u2014")
+                    InfoRowDetailed(stringResource(R.string.label_comic_genre), extraMetadata?.comicGenre?.takeIf { it.isNotBlank() } ?: "\u2014")
+                    InfoRowDetailed(stringResource(R.string.label_comic_format), extraMetadata?.comicFormat?.takeIf { it.isNotBlank() } ?: "\u2014")
+                    InfoRowDetailed(stringResource(R.string.label_comic_age_rating), extraMetadata?.comicAgeRating?.takeIf { it.isNotBlank() } ?: "\u2014")
+                    InfoRowDetailed(stringResource(R.string.label_comic_page_count), extraMetadata?.comicPageCount?.takeIf { it.isNotBlank() } ?: "\u2014")
+                }
+            }
+
+            FileInfoSection(title = stringResource(R.string.section_file)) {
+                InfoRowDetailed(stringResource(R.string.label_file_name_simple), item.displayName, maxLines = 2)
+                InfoRowDetailed(stringResource(R.string.added), formattedDate)
+                lastModifiedDate?.let { InfoRowDetailed(stringResource(R.string.label_modified), it) }
+                InfoRowDetailed(
+                    label = stringResource(R.string.location),
+                    value = pathText,
+                    maxLines = 4,
+                    onCopy = { onCopy(pathText) }
+                )
+            }
+
+            item.description?.takeIf { it.isNotBlank() }?.let { summary ->
+                OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(stringResource(R.string.label_summary), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        ExpandableSummaryText(summary, collapsedMaxLines = 4)
+                    }
+                }
+            }
+
+            FileInfoSection(title = stringResource(R.string.section_tags)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(stringResource(R.string.label_library_tags), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    DisableSelection {
+                        TextButton(onClick = onOpenTags) { Text(stringResource(R.string.action_add_edit)) }
+                    }
+                }
+
+                if (item.tags.isNotEmpty()) {
+                    BookTagChipsRow(tags = item.tags, compact = false)
+                } else {
+                    Text(
+                        stringResource(R.string.msg_no_tags_assigned),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BookMetadataEditContent(
+    item: RecentFileItem,
+    titleInput: String,
+    onTitleChange: (String) -> Unit,
+    authorInput: String,
+    onAuthorChange: (String) -> Unit,
+    seriesInput: String,
+    onSeriesChange: (String) -> Unit,
+    seriesIndexInput: String,
+    onSeriesIndexChange: (String) -> Unit,
+    descriptionInput: String,
+    onDescriptionChange: (String) -> Unit,
+    currentCoverPath: String?,
+    selectedCoverUri: Uri?,
+    selectedCoverName: String?,
+    onChooseCover: () -> Unit,
+    onClearCover: () -> Unit,
+    authorSuggestions: List<String> = emptyList(),
+    publicationDateInput: String = "",
+    onPublicationDateChange: (String) -> Unit = {},
+    tags: List<TagEntity> = emptyList(),
+    onEditTags: () -> Unit = {},
+    showPublicationDate: Boolean = true,
+    showCover: Boolean = true
+) {
+    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(stringResource(R.string.label_editable_metadata), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            OutlinedTextField(
+                value = titleInput,
+                onValueChange = onTitleChange,
+                label = { Text(stringResource(R.string.label_title)) },
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 3
+            )
+            AuthorAutocompleteField(
+                value = authorInput,
+                onValueChange = onAuthorChange,
+                suggestions = authorSuggestions
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = seriesInput,
+                    onValueChange = onSeriesChange,
+                    label = { Text(stringResource(R.string.label_series)) },
+                    modifier = Modifier.weight(1f),
+                    maxLines = 2
+                )
+                OutlinedTextField(
+                    value = seriesIndexInput,
+                    onValueChange = onSeriesIndexChange,
+                    label = { Text("#") },
+                    modifier = Modifier.width(96.dp),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                )
+            }
+            if (showPublicationDate) {
+                OutlinedTextField(
+                    value = publicationDateInput,
+                    onValueChange = onPublicationDateChange,
+                    label = { Text(stringResource(R.string.label_publication_date)) },
+                    placeholder = { Text("YYYY-MM-DD") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            }
+            OutlinedTextField(
+                value = descriptionInput,
+                onValueChange = onDescriptionChange,
+                label = { Text(stringResource(R.string.label_summary)) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 128.dp),
+                minLines = 4,
+                maxLines = 10
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(stringResource(R.string.label_library_tags), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                TextButton(onClick = onEditTags) { Text(stringResource(R.string.action_add_edit)) }
+            }
+            if (tags.isNotEmpty()) {
+                BookTagChipsRow(tags = tags, compact = false)
+            }
+            if (showCover) {
+                MetadataCoverPreview(
+                    item = item,
+                    currentCoverPath = currentCoverPath,
+                    selectedCoverUri = selectedCoverUri,
+                    selectedCoverName = selectedCoverName,
+                    onChooseCover = onChooseCover,
+                    onClearCover = onClearCover
+                )
+            }
+        }
     }
 }
 
@@ -827,6 +1296,277 @@ private fun MetadataCoverPreview(
             }
         }
     }
+}
+
+@Composable
+private fun BookDisplayNameEditContent(
+    displayNameInput: String,
+    onDisplayNameChange: (String) -> Unit,
+    originalFileName: String
+) {
+    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(stringResource(R.string.label_display_name), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            OutlinedTextField(
+                value = displayNameInput,
+                onValueChange = onDisplayNameChange,
+                label = { Text(stringResource(R.string.label_name_shown_in_reader)) },
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 3
+            )
+            Text(
+                stringResource(R.string.original_file_format, originalFileName),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun FileInfoBottomBar(
+    isEditing: Boolean,
+    canRestore: Boolean,
+    editLabel: String,
+    onCancel: () -> Unit,
+    onRestore: () -> Unit,
+    onSave: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: (() -> Unit)? = null
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Episteme UI: Delete sits alone on the far left, clearly apart from the action group.
+        if (onDelete != null) {
+            OutlinedButton(
+                onClick = onDelete,
+                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.action_delete))
+            }
+        }
+        Spacer(modifier = Modifier.weight(1f))
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (canRestore) {
+                OutlinedButton(
+                    onClick = onRestore,
+                    modifier = Modifier.padding(end = 8.dp)
+                ) {
+                    Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.action_restore))
+                }
+            }
+            TextButton(onClick = onCancel) {
+                Text(if (isEditing) stringResource(R.string.action_cancel) else stringResource(R.string.action_close))
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            if (isEditing) {
+                Button(onClick = onSave) {
+                    Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.action_save))
+                }
+            } else {
+                Button(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(editLabel)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FileInfoSection(
+    title: String,
+    content: @Composable () -> Unit
+) {
+    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            content()
+        }
+    }
+}
+
+@Composable
+private fun InfoRowDetailed(
+    label: String,
+    value: String,
+    maxLines: Int = 1,
+    onCopy: (() -> Unit)? = null
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top
+    ) {
+        Text(
+            text = label,
+            fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .width(104.dp)
+                .padding(top = 2.dp)
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            ExpandableValueText(value, collapsedMaxLines = maxLines)
+        }
+        if (onCopy != null) {
+            IconButton(
+                onClick = onCopy,
+                modifier = Modifier
+                    .size(28.dp)
+                    .padding(start = 4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ContentCopy,
+                    contentDescription = stringResource(R.string.content_desc_copy_value, label),
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExpandableValueText(
+    value: String,
+    collapsedMaxLines: Int
+) {
+    var expanded by remember(value) { mutableStateOf(false) }
+    val canExpand = collapsedMaxLines < Int.MAX_VALUE && (value.length > 120 || value.contains('\n'))
+    Text(
+        text = value,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurface,
+        maxLines = if (expanded) Int.MAX_VALUE else collapsedMaxLines,
+        overflow = if (expanded) TextOverflow.Clip else TextOverflow.Ellipsis,
+        modifier = Modifier.padding(top = 2.dp)
+    )
+    if (canExpand) {
+        DisableSelection {
+            TextButton(
+                onClick = { expanded = !expanded },
+                contentPadding = PaddingValues(0.dp),
+                modifier = Modifier.height(32.dp)
+            ) {
+                Text(if (expanded) "Less" else "...more")
+                Spacer(modifier = Modifier.width(2.dp))
+                Icon(
+                    imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExpandableSummaryText(
+    value: String,
+    collapsedMaxLines: Int
+) {
+    var expanded by remember(value) { mutableStateOf(false) }
+    val canExpand = value.length > 220 || value.count { it == '\n' } >= collapsedMaxLines || value.looksLikeHtml()
+    val contentModifier = if (expanded) {
+        Modifier.fillMaxWidth()
+    } else {
+        Modifier
+            .fillMaxWidth()
+            .heightIn(max = (collapsedMaxLines * 26).dp)
+            .clipToBounds()
+    }
+
+    if (value.looksLikeHtml()) {
+        HtmlSummaryText(
+            html = value,
+            expanded = expanded,
+            collapsedMaxLines = collapsedMaxLines,
+            modifier = Modifier.fillMaxWidth()
+        )
+    } else {
+        Box(modifier = contentModifier) {
+            SharedMarkdownText(
+                markdown = value,
+                modifier = Modifier.fillMaxWidth(),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+    }
+
+    if (canExpand) {
+        DisableSelection {
+            TextButton(
+                onClick = { expanded = !expanded },
+                contentPadding = PaddingValues(0.dp),
+                modifier = Modifier.height(32.dp)
+            ) {
+                Text(if (expanded) "Less" else "...more")
+                Spacer(modifier = Modifier.width(2.dp))
+                Icon(
+                    imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HtmlSummaryText(
+    html: String,
+    expanded: Boolean,
+    collapsedMaxLines: Int,
+    modifier: Modifier = Modifier
+) {
+    val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
+    val linkColor = MaterialTheme.colorScheme.primary.toArgb()
+    AndroidView(
+        modifier = modifier,
+        factory = { context ->
+            TextView(context).apply {
+                includeFontPadding = false
+                // Episteme UI: Compose's SelectionContainer cannot reach into an AndroidView, so the
+                // HTML summary uses the TextView's own long-press selection. setTextIsSelectable()
+                // resets the movement method, so the link handler is re-applied after it.
+                setTextIsSelectable(true)
+                movementMethod = LinkMovementMethod.getInstance()
+            }
+        },
+        update = { textView ->
+            textView.text = HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_COMPACT)
+            textView.setTextColor(textColor)
+            textView.setLinkTextColor(linkColor)
+            textView.maxLines = if (expanded) Int.MAX_VALUE else collapsedMaxLines
+            textView.ellipsize = if (expanded) null else TextUtils.TruncateAt.END
+        }
+    )
 }
 
 internal fun RecentFileItem.resolveDisplayPath(context: Context, isOpdsStream: Boolean): String {
@@ -1010,7 +1750,7 @@ fun FileTypeBadge(
     overlay: Boolean = false,
     compact: Boolean = false
 ) {
-    // 白い熊 UI: overlay pills follow the theme — black pill, yellow text and frame.
+    // Episteme UI: overlay pills follow the theme — black pill, yellow text and frame.
     val containerColor = if (overlay) MaterialTheme.colorScheme.surface.copy(alpha = 0.85f) else MaterialTheme.colorScheme.secondaryContainer
     val contentColor = if (overlay) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSecondaryContainer
 
@@ -1039,6 +1779,155 @@ fun FileTypeBadge(
 }
 
 private fun TagEntity.displayColor(): Color = Color(color ?: 0xFF64B5F6.toInt())
+
+/** Episteme custom: publication year extracted from a publication date string
+ *  ("2018", "2018-05-12", "2018/05/12", "12 mai 2018"…). */
+fun publicationYearOf(publicationDate: String?): String? {
+    val trimmed = publicationDate?.trim()?.takeIf { it.isNotBlank() } ?: return null
+    return Regex("""\b(1[89]\d{2}|20\d{2})\b""")
+        .find(trimmed)?.groupValues?.getOrNull(1)
+        ?: trimmed.take(4).takeIf { it.length == 4 && it.all(Char::isDigit) }
+}
+
+/** Episteme custom: display a publication date in the app's own language (day/month/year,
+ *  month/day/year, …) while keeping bare years as-is. */
+fun formatPublicationDateForLocale(raw: String, locale: Locale): String {
+    val trimmed = raw.trim()
+    if (trimmed.isBlank() || Regex("""^\d{4}$""").matches(trimmed)) return trimmed
+    val patterns = listOf("yyyy-MM-dd", "yyyy/MM/dd", "yyyy.MM.dd", "dd/MM/yyyy", "dd-MM-yyyy")
+    for (pattern in patterns) {
+        try {
+            val sdf = java.text.SimpleDateFormat(pattern, Locale.US)
+            sdf.isLenient = false
+            val date = sdf.parse(trimmed) ?: continue
+            return java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM, locale).format(date)
+        } catch (_: Exception) {
+            // try the next pattern
+        }
+    }
+    return publicationYearOf(trimmed) ?: trimmed
+}
+
+/** Episteme custom: pill showing a book's publication year, styled like [FileTypeBadge]. */
+@Composable
+fun PublicationYearBadge(
+    year: String,
+    modifier: Modifier = Modifier,
+    overlay: Boolean = false,
+    compact: Boolean = false
+) {
+    val containerColor = if (overlay) MaterialTheme.colorScheme.surface.copy(alpha = 0.85f) else MaterialTheme.colorScheme.secondaryContainer
+    val contentColor = if (overlay) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSecondaryContainer
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(50),
+        color = containerColor,
+        contentColor = contentColor,
+        border = if (overlay) BorderStroke(1.dp, MaterialTheme.colorScheme.outline) else null
+    ) {
+        Text(
+            text = year,
+            style = if (compact) {
+                MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, letterSpacing = 0.sp)
+            } else {
+                MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp)
+            },
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 1,
+            modifier = Modifier.padding(
+                horizontal = if (compact) 6.dp else 10.dp,
+                vertical = if (compact) 3.dp else 4.dp
+            )
+        )
+    }
+}
+
+/** Episteme custom: live banner for the cover/metadata regeneration pass — running
+ *  progress with a bar, then a completion summary. Failed books are listed live (scrollable)
+ *  as they are encountered, so a stuck item is visible before the pass even finishes. */
+@Composable
+fun MetadataExtractionProgressBanner(modifier: Modifier = Modifier) {
+    val progress by MetadataExtractionWorker.progressFlow.collectAsState()
+    if (!progress.isRunning && !progress.completed) return
+
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = if (progress.completed) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+            if (progress.isRunning) {
+                Text(
+                    text = stringResource(R.string.cover_regen_in_progress, progress.processed, progress.total),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                LinearProgressIndicator(
+                    progress = { if (progress.total > 0) progress.processed.toFloat() / progress.total else 0f },
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                )
+            } else {
+                val summary = if (progress.failed == 0) {
+                    stringResource(R.string.cover_regen_done, progress.coversUpdated)
+                } else {
+                    stringResource(R.string.cover_regen_done_with_failures, progress.coversUpdated, progress.failed)
+                }
+                Text(summary, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            }
+
+            if (progress.failed > 0) {
+                Text(
+                    text = if (progress.isRunning) {
+                        stringResource(R.string.cover_regen_failed_so_far, progress.failed)
+                    } else {
+                        stringResource(R.string.cover_regen_failed_books_header)
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+                if (progress.failedSamples.isNotEmpty()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp)
+                            .verticalScroll(rememberScrollState())
+                            .heightIn(max = 132.dp)
+                    ) {
+                        progress.failedSamples.forEach { name ->
+                            Text(
+                                text = "\u2022 $name",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                    if (progress.failed > progress.failedSamples.size) {
+                        Text(
+                            text = stringResource(R.string.cover_regen_more_failures, progress.failed - progress.failedSamples.size),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                }
+            }
+
+            if (progress.completed) {
+                TextButton(
+                    onClick = { MetadataExtractionWorker.progressFlow.value = MetadataExtractionWorker.MetadataExtractionProgress() },
+                    modifier = Modifier.align(Alignment.End).padding(top = 4.dp)
+                ) {
+                    Text(stringResource(R.string.cover_regen_dismiss))
+                }
+            }
+        }
+    }
+}
 
 @Composable
 fun BookTagChipsRow(
@@ -1102,7 +1991,7 @@ fun RecentFileItem.cardAuthor(): String {
 }
 
 /**
- * 白い熊 UI: the author exactly as the library author filter keys it — trimmed, and null
+ * Episteme UI: the author exactly as the library author filter keys it — trimmed, and null
  * when the book has nothing worth filtering by. The filter row, the tap-the-author-name
  * shortcut and the visible-books predicate all go through this so they cannot drift apart.
  */

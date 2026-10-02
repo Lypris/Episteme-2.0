@@ -52,7 +52,7 @@ class StateExportReceiver : BroadcastReceiver() {
         // being cancelled owns the single terminal reply, and will send it itself — so it has to
         // be served before those extras are demanded, and it is gated on the switch and the
         // token like everything else. A cancel that finds nothing running is not an error; it is
-        // 白い熊 pressing 中止 a moment after the run ended, and costs nothing.
+        // Episteme pressing 中止 a moment after the run ended, and costs nothing.
         if (action == "${app.packageName}.action.CANCEL_EXPORT") {
             WhiteBearAutomation.refuse(app, intent.getStringExtra(AutomationWire.EXTRA_TOKEN))?.let {
                 Log.w(AutomationWire.TAG, "CANCEL_EXPORT refused — $it")

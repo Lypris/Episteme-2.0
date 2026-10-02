@@ -868,6 +868,11 @@ class RecentFilesRepository(
                         author = item.author,
                         seriesName = item.seriesName,
                         seriesIndex = item.seriesIndex,
+                        seriesNumber = item.seriesNumber,
+                        publicationDate = item.publicationDate,
+                        publisher = item.publisher,
+                        writer = item.writer,
+                        penciller = item.penciller,
                         description = item.description,
                         fileSize = item.fileSize,
                         fileContentModifiedTimestamp = item.fileContentModifiedTimestamp,
@@ -983,6 +988,33 @@ class RecentFilesRepository(
                 recentFileDao.markAsDeleted(chunk, System.currentTimeMillis())
                 Timber.d("DeleteDebug: DAO - Marked ${chunk.size} items as deleted.")
             }
+        }
+    }
+
+    /** shiroikuma-custom: mark the given books as read (progress 100%). */
+    suspend fun markBooksAsRead(bookIds: List<String>) = withContext(Dispatchers.IO) {
+        bookIds.chunked(900).forEach { chunk ->
+            if (chunk.isNotEmpty()) {
+                recentFileDao.markBooksAsRead(chunk, System.currentTimeMillis())
+            }
+        }
+    }
+
+    /** shiroikuma-custom: mark the given books as unread (reset progress + position). */
+    suspend fun markBooksAsUnread(bookIds: List<String>) = withContext(Dispatchers.IO) {
+        bookIds.chunked(900).forEach { chunk ->
+            if (chunk.isNotEmpty()) {
+                recentFileDao.markBooksAsUnread(chunk, System.currentTimeMillis())
+            }
+        }
+    }
+
+    /** shiroikuma-custom: clears every cached cover and the parsed-cover flag so the metadata
+     *  worker regenerates all thumbnails from the source files on its next run. */
+    suspend fun resetAllCoverMetadata() = withContext(Dispatchers.IO) {
+        recentFileDao.resetAllCoverMetadata()
+        getCoverCacheDirInternal().listFiles()?.forEach { file ->
+            runCatching { if (file.isDirectory) file.deleteRecursively() else file.delete() }
         }
     }
 

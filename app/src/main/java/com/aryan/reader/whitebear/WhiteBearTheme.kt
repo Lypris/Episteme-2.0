@@ -23,7 +23,7 @@ val LocalWhiteBearBorderWidth = compositionLocalOf<Dp> { 0.dp }
 
 /**
  * Wraps the app content and, when enabled, overrides the Material theme with the
- * 白い熊 black-yellow scheme built from [WhiteBearUiState]. Sits inside AppTheme so the
+ * Episteme black-yellow scheme built from [WhiteBearUiState]. Sits inside AppTheme so the
  * app-wide font family chosen upstream stays in effect.
  */
 @Composable

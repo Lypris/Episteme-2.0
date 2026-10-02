@@ -41,7 +41,7 @@ interface RecentFileDao {
     // "Couldn't read row N, col 0 from CursorWindow". A read transaction pins a single snapshot
     // for every refill, so the whole iteration observes one consistent result set.
     @Transaction
-    @Query("SELECT bookId, uriString, type, displayName, timestamp, dateAddedTimestamp, coverImagePath, title, author, lastChapterIndex, lastPage, lastPositionCfi, progressPercentage, isRecent, isAvailable, lastModifiedTimestamp, isDeleted, locatorBlockIndex, locatorCharOffset, sourceFolderUri, isReflowPreferred, customName, fileSize, fileContentModifiedTimestamp, seriesName, seriesIndex, substr(description, 1, 512) AS description, originalTitle, originalAuthor, originalSeriesName, originalSeriesIndex, substr(originalDescription, 1, 512) AS originalDescription, readingPositionModifiedTimestamp FROM recent_files WHERE isDeleted = 0 ORDER BY timestamp DESC")
+    @Query("SELECT bookId, uriString, type, displayName, timestamp, dateAddedTimestamp, coverImagePath, title, author, lastChapterIndex, lastPage, lastPositionCfi, progressPercentage, isRecent, isAvailable, lastModifiedTimestamp, isDeleted, locatorBlockIndex, locatorCharOffset, sourceFolderUri, isReflowPreferred, customName, fileSize, fileContentModifiedTimestamp, seriesName, seriesIndex, seriesNumber, publicationDate, publisher, writer, penciller, substr(description, 1, 512) AS description, originalTitle, originalAuthor, originalSeriesName, originalSeriesIndex, substr(originalDescription, 1, 512) AS originalDescription, readingPositionModifiedTimestamp FROM recent_files WHERE isDeleted = 0 ORDER BY timestamp DESC")
     fun getRecentFiles(): Flow<List<RecentFileSummary>>
 
     @Query("SELECT * FROM recent_files WHERE sourceFolderUri = :sourceFolderUri AND isDeleted = 0")
@@ -69,7 +69,7 @@ interface RecentFileDao {
     suspend fun updateReflowPreference(bookId: String, isPreferred: Boolean)
 
     @Transaction
-    @Query("SELECT bookId, uriString, type, displayName, timestamp, dateAddedTimestamp, coverImagePath, title, author, lastChapterIndex, lastPage, lastPositionCfi, progressPercentage, isRecent, isAvailable, lastModifiedTimestamp, isDeleted, locatorBlockIndex, locatorCharOffset, sourceFolderUri, isReflowPreferred, customName, fileSize, fileContentModifiedTimestamp, seriesName, seriesIndex, substr(description, 1, 512) AS description, originalTitle, originalAuthor, originalSeriesName, originalSeriesIndex, substr(originalDescription, 1, 512) AS originalDescription, readingPositionModifiedTimestamp FROM recent_files WHERE isDeleted = 0 ORDER BY timestamp DESC LIMIT :limit")
+    @Query("SELECT bookId, uriString, type, displayName, timestamp, dateAddedTimestamp, coverImagePath, title, author, lastChapterIndex, lastPage, lastPositionCfi, progressPercentage, isRecent, isAvailable, lastModifiedTimestamp, isDeleted, locatorBlockIndex, locatorCharOffset, sourceFolderUri, isReflowPreferred, customName, fileSize, fileContentModifiedTimestamp, seriesName, seriesIndex, seriesNumber, publicationDate, publisher, writer, penciller, substr(description, 1, 512) AS description, originalTitle, originalAuthor, originalSeriesName, originalSeriesIndex, substr(originalDescription, 1, 512) AS originalDescription, readingPositionModifiedTimestamp FROM recent_files WHERE isDeleted = 0 ORDER BY timestamp DESC LIMIT :limit")
     fun getRecentFilesList(limit: Int): List<RecentFileSummary>
 
     @Query("DELETE FROM recent_files WHERE bookId IN (:bookIds)")
@@ -170,12 +170,24 @@ interface RecentFileDao {
     @Query("UPDATE recent_files SET isRecent = 0, lastModifiedTimestamp = :timestamp WHERE bookId IN (:bookIds)")
     suspend fun markAsNotRecent(bookIds: List<String>, timestamp: Long)
 
+    // shiroikuma-custom: bulk mark-as-read — progress 100% = completed in the read-status filter.
+    @Query("UPDATE recent_files SET progressPercentage = 100, lastModifiedTimestamp = :timestamp WHERE bookId IN (:bookIds)")
+    suspend fun markBooksAsRead(bookIds: List<String>, timestamp: Long)
+
+    // shiroikuma-custom: bulk mark-as-unread — reset progress and clear the reading position.
+    @Query("UPDATE recent_files SET progressPercentage = 0, lastPage = NULL, lastChapterIndex = NULL, lastPositionCfi = NULL, locatorBlockIndex = NULL, locatorCharOffset = NULL, readingPositionModifiedTimestamp = 0, lastModifiedTimestamp = :timestamp WHERE bookId IN (:bookIds)")
+    suspend fun markBooksAsUnread(bookIds: List<String>, timestamp: Long)
+
+    // shiroikuma-custom: force-recreate every cover thumbnail.
+    @Query("UPDATE recent_files SET folderCoverMetadataParsed = 0, coverImagePath = NULL WHERE isDeleted = 0")
+    suspend fun resetAllCoverMetadata()
+
     @Query("""
         SELECT * FROM recent_files
         WHERE sourceFolderUri IS NOT NULL
         AND isDeleted = 0
         AND (
-            (type IN ('PDF', 'EPUB', 'MOBI', 'FB2', 'ODT', 'FODT', 'DOCX') AND folderTextMetadataParsed = 0)
+            (type IN ('PDF', 'EPUB', 'MOBI', 'FB2', 'ODT', 'FODT', 'DOCX', 'CBZ', 'CBR', 'CB7', 'CBT') AND folderTextMetadataParsed = 0)
             OR (type IN ('PDF', 'EPUB', 'TXT', 'MD', 'HTML', 'MOBI', 'FB2', 'CBZ', 'CBR', 'CB7', 'CBT', 'DOCX', 'ODT', 'FODT', 'PPTX') AND folderCoverMetadataParsed = 0 AND (coverImagePath IS NULL OR coverImagePath = ''))
         )
         ORDER BY timestamp DESC
@@ -188,7 +200,7 @@ interface RecentFileDao {
         WHERE sourceFolderUri = :sourceFolderUri
         AND isDeleted = 0
         AND (
-            (type IN ('PDF', 'EPUB', 'MOBI', 'FB2', 'ODT', 'FODT', 'DOCX') AND folderTextMetadataParsed = 0)
+            (type IN ('PDF', 'EPUB', 'MOBI', 'FB2', 'ODT', 'FODT', 'DOCX', 'CBZ', 'CBR', 'CB7', 'CBT') AND folderTextMetadataParsed = 0)
             OR (type IN ('PDF', 'EPUB', 'TXT', 'MD', 'HTML', 'MOBI', 'FB2', 'CBZ', 'CBR', 'CB7', 'CBT', 'DOCX', 'ODT', 'FODT', 'PPTX') AND folderCoverMetadataParsed = 0 AND (coverImagePath IS NULL OR coverImagePath = ''))
         )
         ORDER BY timestamp DESC
@@ -201,7 +213,7 @@ interface RecentFileDao {
         WHERE sourceFolderUri IS NOT NULL
         AND isDeleted = 0
         AND (
-            (type IN ('PDF', 'EPUB', 'MOBI', 'FB2', 'ODT', 'FODT', 'DOCX') AND folderTextMetadataParsed = 0)
+            (type IN ('PDF', 'EPUB', 'MOBI', 'FB2', 'ODT', 'FODT', 'DOCX', 'CBZ', 'CBR', 'CB7', 'CBT') AND folderTextMetadataParsed = 0)
             OR (type IN ('PDF', 'EPUB', 'TXT', 'MD', 'HTML', 'MOBI', 'FB2', 'CBZ', 'CBR', 'CB7', 'CBT', 'DOCX', 'ODT', 'FODT', 'PPTX') AND folderCoverMetadataParsed = 0 AND (coverImagePath IS NULL OR coverImagePath = ''))
         )
     """)
@@ -212,7 +224,7 @@ interface RecentFileDao {
         WHERE sourceFolderUri = :sourceFolderUri
         AND isDeleted = 0
         AND (
-            (type IN ('PDF', 'EPUB', 'MOBI', 'FB2', 'ODT', 'FODT', 'DOCX') AND folderTextMetadataParsed = 0)
+            (type IN ('PDF', 'EPUB', 'MOBI', 'FB2', 'ODT', 'FODT', 'DOCX', 'CBZ', 'CBR', 'CB7', 'CBT') AND folderTextMetadataParsed = 0)
             OR (type IN ('PDF', 'EPUB', 'TXT', 'MD', 'HTML', 'MOBI', 'FB2', 'CBZ', 'CBR', 'CB7', 'CBT', 'DOCX', 'ODT', 'FODT', 'PPTX') AND folderCoverMetadataParsed = 0 AND (coverImagePath IS NULL OR coverImagePath = ''))
         )
     """)
@@ -241,6 +253,27 @@ interface RecentFileDao {
                 WHEN :seriesIndex IS NOT NULL AND (originalSeriesIndex IS NULL OR seriesIndex IS NULL OR seriesIndex = originalSeriesIndex)
                 THEN :seriesIndex
                 ELSE seriesIndex
+            END,
+            seriesNumber = COALESCE(:seriesNumber, seriesNumber),
+            publicationDate = CASE
+                WHEN :publicationDate IS NOT NULL AND (publicationDate IS NULL OR publicationDate = '')
+                THEN :publicationDate
+                ELSE publicationDate
+            END,
+            publisher = CASE
+                WHEN :publisher IS NOT NULL AND (publisher IS NULL OR publisher = '')
+                THEN :publisher
+                ELSE publisher
+            END,
+            writer = CASE
+                WHEN :writer IS NOT NULL AND (writer IS NULL OR writer = '')
+                THEN :writer
+                ELSE writer
+            END,
+            penciller = CASE
+                WHEN :penciller IS NOT NULL AND (penciller IS NULL OR penciller = '')
+                THEN :penciller
+                ELSE penciller
             END,
             description = CASE
                 WHEN :description IS NOT NULL AND (originalDescription IS NULL OR description IS NULL OR description = originalDescription)
@@ -285,6 +318,11 @@ interface RecentFileDao {
         author: String?,
         seriesName: String?,
         seriesIndex: Double?,
+        seriesNumber: String? = null,
+        publicationDate: String? = null,
+        publisher: String? = null,
+        writer: String? = null,
+        penciller: String? = null,
         description: String?,
         fileSize: Long,
         fileContentModifiedTimestamp: Long,
@@ -305,6 +343,7 @@ interface RecentFileDao {
             author = :author,
             seriesName = :seriesName,
             seriesIndex = :seriesIndex,
+            publicationDate = :publicationDate,
             description = :description,
             coverImagePath = COALESCE(:coverImagePath, coverImagePath),
             customName = NULL,
@@ -326,6 +365,7 @@ interface RecentFileDao {
         author: String?,
         seriesName: String?,
         seriesIndex: Double?,
+        publicationDate: String? = null,
         description: String?,
         coverImagePath: String?,
         fileSize: Long,

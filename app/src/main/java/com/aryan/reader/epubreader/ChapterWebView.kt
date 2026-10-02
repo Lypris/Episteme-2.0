@@ -752,7 +752,7 @@ private fun colorCssForArgb(argb: Int): String {
 }
 
 /**
- * 白い熊 UI: hands image bytes to the reader JS as a data: URL. Chapter documents load
+ * Episteme UI: hands image bytes to the reader JS as a data: URL. Chapter documents load
  * from file://, so a canvas painted with their images is tainted and unreadable — the
  * ornament recolouring reads pixels via this bridge's data: URLs instead. Restricted to
  * the app's own files/cache directories and small files.
@@ -925,7 +925,7 @@ fun ChapterWebView(
     onWebViewDisposed: (WebView) -> Unit = {},
     activeTextureId: String? = null,
     activeTextureAlpha: Float = 0.55f,
-    // 白い熊 UI: per-book writing direction ("auto"/"vertical"/"horizontal") plus a callback
+    // Episteme UI: per-book writing direction ("auto"/"vertical"/"horizontal") plus a callback
     // reporting whether the chapter effectively renders vertical-rl (tategaki).
     whiteBearWritingMode: String = "auto",
     whiteBearRubySpace: Boolean = true,
@@ -1244,7 +1244,7 @@ fun ChapterWebView(
                         }, "LinkNavBridge"
                     )
 
-                    // 白い熊 UI: untainted pixel access for the ornament recolouring.
+                    // Episteme UI: untainted pixel access for the ornament recolouring.
                     addJavascriptInterface(WhiteBearImageJsBridge(ctx), "WhiteBearImageBridge")
 
                     webViewClient = object : WebViewClient() {
@@ -1442,7 +1442,7 @@ fun ChapterWebView(
                                 null
                             )
 
-                            // 白い熊 UI: apply the writing direction, then report whether the
+                            // Episteme UI: apply the writing direction, then report whether the
                             // chapter effectively renders vertical (tategaki).
                             view?.evaluateJavascript(
                                 "javascript:window.whiteBearApplyWritingMode('$whiteBearWritingMode', $whiteBearRubySpace);"
@@ -1721,7 +1721,7 @@ fun ChapterWebView(
                         )
                     }
 
-                    // 白い熊 UI: keep the writing-direction override in sync (per-book toggle).
+                    // Episteme UI: keep the writing-direction override in sync (per-book toggle).
                     val wbWritingSignature = whiteBearWritingMode + "|" + whiteBearRubySpace
                     if (runtimeApplierState.whiteBearWritingMode != wbWritingSignature) {
                         runtimeApplierState.whiteBearWritingMode = wbWritingSignature

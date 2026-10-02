@@ -5,7 +5,7 @@ import android.media.AudioAttributes
 import android.media.SoundPool
 
 /**
- * Fork-local (白い熊) page-turn sound player. Loads the bundled page1..page5 ogg effects
+ * Fork-local (Episteme) page-turn sound player. Loads the bundled page1..page5 ogg effects
  * into a SoundPool once and plays the selected one on a page-turn tap.
  */
 class WhiteBearSound private constructor(context: Context) {

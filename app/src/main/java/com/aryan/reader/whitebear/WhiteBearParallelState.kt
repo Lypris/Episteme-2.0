@@ -42,7 +42,7 @@ fun effectiveParallelLayout(layout: WhiteBearParallelLayout, bookCount: Int): Wh
 }
 
 /**
- * Fork-local (白い熊) parallel-reading set: 2–3 books ordered left → right. While a set is
+ * Fork-local (Episteme) parallel-reading set: 2–3 books ordered left → right. While a set is
  * active, a two-finger horizontal swipe in the reader flips to the neighbouring book (with
  * wrap-around), each book keeping its own saved position. The set can also share the
  * screen: [layout] picks the pane arrangement, [mainRatio]/[subRatio] carry the positions

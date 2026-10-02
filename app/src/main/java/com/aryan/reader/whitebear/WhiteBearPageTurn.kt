@@ -37,7 +37,7 @@ import kotlinx.coroutines.delay
 import kotlin.math.sqrt
 
 /**
- * 白い熊 UI: page-turn animation styles for the tap page turn.
+ * Episteme UI: page-turn animation styles for the tap page turn.
  * NONE keeps the instant jump; SLIDE smooth-scrolls in the WebView itself; the overlay
  * styles (FADE / FLIP / CURL) capture the old page as a bitmap, turn the page underneath
  * instantly, and animate the captured old page away on top. CURL folds the paper over a

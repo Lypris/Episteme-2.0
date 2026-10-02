@@ -498,15 +498,11 @@ internal fun PdfVerticalReader(
         // geometry, so a viewport-only resize (split divider drag) does not
         // restart them. Route the fit base through a delegate so zoom/pinch
         // math always clamps against the live fit zoom.
-        val fitZoom by rememberUpdatedState(
-            remember(ratios, screenWidth, screenHeight) {
-                pdfVerticalFitZoomScale(
-                    pageAspectRatios = ratios,
-                    viewportWidthPx = screenWidth,
-                    viewportHeightPx = screenHeight,
-                )
-            }
-        )
+        //
+        // Fork (白い熊 書籍閲覧): always fit to width — pages fill the screen width
+        // and scroll vertically in every orientation, instead of zooming out in
+        // landscape to letterbox the page into a small portrait strip.
+        val fitZoom by rememberUpdatedState(1f)
 
         LaunchedEffect(layoutInfo, totalDocHeight, screenWidth, screenHeight, fitZoom, headerHeightPx, footerHeightPx) {
             PdfVerticalPerfLog.i(

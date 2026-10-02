@@ -3188,6 +3188,41 @@ internal fun PdfPageComposable(
                                     }
                                 }
                             } else {
+                                // scale == 1f: base fit. In landscape the page is fit-to-width and
+                                // overflows vertically, so allow a single-finger VERTICAL pan.
+                                // Horizontal drags stay unconsumed so the pager can turn pages.
+                                val contentOverflowsVertically =
+                                    actualBitmapHeightPx * scale > size.height.toFloat()
+                                if (contentOverflowsVertically && mode == 0 && pointerCount == 1) {
+                                    accumulatedPan += panChange
+                                    if (accumulatedPan.getDistance() > touchSlop &&
+                                        abs(accumulatedPan.y) > abs(accumulatedPan.x)
+                                    ) {
+                                        mode = 1
+                                        Timber.tag(PDF_ONE_HAND_ZOOM_TRACE_TAG).d(
+                                            "page.panDetector.modePanVertical page=$pageIndex accumulatedPan=$accumulatedPan scale=$scale"
+                                        )
+                                        Timber.tag("PdfZoomDebug").d("Mode Change: PAN (Vertical at base scale)")
+                                    }
+                                }
+                                if (mode == 1) {
+                                    val contentHeight = actualBitmapHeightPx * scale
+                                    val maxOffsetY =
+                                        (contentHeight - size.height).coerceAtLeast(0f) / 2f
+                                    offset = offset.copy(
+                                        y = (offset.y + panChange.y).coerceIn(-maxOffsetY, maxOffsetY)
+                                    )
+                                    if (event.changes.isNotEmpty() && panChange != Offset.Zero) {
+                                        velocityAccumulator += panChange
+                                        velocityTracker.addPosition(
+                                            event.changes[0].uptimeMillis,
+                                            velocityAccumulator
+                                        )
+                                    }
+                                    event.changes.forEach {
+                                        if (it.positionChanged()) it.consume()
+                                    }
+                                }
                                 if (pointerCount > 1) {
                                     if (mode == 0) {
                                         accumulatedZoom *= zoomChange
@@ -3273,7 +3308,7 @@ internal fun PdfPageComposable(
                                 isTransforming = false
                             }
                         }
-                    } else if (mode == 1 && scale > 1f) {
+                    } else if (mode == 1) {
                         val contentWidth = actualBitmapWidthPx * scale
                         val contentHeight = actualBitmapHeightPx * scale
                         val maxOffsetX = (contentWidth - size.width).coerceAtLeast(0f) / 2f
@@ -3788,15 +3823,22 @@ internal fun PdfPageComposable(
                     val (scaledWidth, scaledHeight) = if (isVerticalScroll) {
                         viewContainerWidthPx to viewContainerHeightPx
                     } else {
-                        var fittedWidth = viewContainerWidthPx
-                        var fittedHeight = (fittedWidth / pageAspect).toInt()
+                        // In landscape, fit to width so the page fills the screen and crops
+                        // top/bottom (the user pans vertically). In portrait, keep the
+                        // existing fit-to-page behavior.
+                        if (viewContainerWidthPx > viewContainerHeightPx) {
+                            viewContainerWidthPx to (viewContainerWidthPx / pageAspect).toInt()
+                        } else {
+                            var fittedWidth = viewContainerWidthPx
+                            var fittedHeight = (fittedWidth / pageAspect).toInt()
 
-                        if (fittedHeight > viewContainerHeightPx) {
-                            fittedHeight = viewContainerHeightPx
-                            fittedWidth = (fittedHeight * pageAspect).toInt()
+                            if (fittedHeight > viewContainerHeightPx) {
+                                fittedHeight = viewContainerHeightPx
+                                fittedWidth = (fittedHeight * pageAspect).toInt()
+                            }
+
+                            fittedWidth to fittedHeight
                         }
-
-                        fittedWidth to fittedHeight
                     }
 
                     if (scaledWidth == actualBitmapWidthPx &&
@@ -3878,15 +3920,22 @@ internal fun PdfPageComposable(
                                 val (scaledWidth, scaledHeight) = if (isVerticalScroll) {
                                     viewContainerWidthPx to viewContainerHeightPx
                                 } else {
-                                    var fittedWidth = viewContainerWidthPx
-                                    var fittedHeight = (fittedWidth / aspectRatio).toInt()
+                                    // In landscape, fit to width so the page fills the screen and
+                                    // crops top/bottom (the user pans vertically). In portrait,
+                                    // keep the existing fit-to-page behavior.
+                                    if (viewContainerWidthPx > viewContainerHeightPx) {
+                                        viewContainerWidthPx to (viewContainerWidthPx / aspectRatio).toInt()
+                                    } else {
+                                        var fittedWidth = viewContainerWidthPx
+                                        var fittedHeight = (fittedWidth / aspectRatio).toInt()
 
-                                    if (fittedHeight > viewContainerHeightPx) {
-                                        fittedHeight = viewContainerHeightPx
-                                        fittedWidth = (fittedHeight * aspectRatio).toInt()
+                                        if (fittedHeight > viewContainerHeightPx) {
+                                            fittedHeight = viewContainerHeightPx
+                                            fittedWidth = (fittedHeight * aspectRatio).toInt()
+                                        }
+
+                                        fittedWidth to fittedHeight
                                     }
-
-                                    fittedWidth to fittedHeight
                                 }
 
                                 if (scaledWidth == actualBitmapWidthPx &&

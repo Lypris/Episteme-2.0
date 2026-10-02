@@ -32,7 +32,7 @@ import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
 /**
- * 白い熊 export/import of everything the app holds, organized by category — the same idea
+ * Episteme export/import of everything the app holds, organized by category — the same idea
  * and flow as the sister forks: ONE ZIP per app, carrying a manifest.json plus one entry
  * per category. Settings categories are plain JSON dumps of whole SharedPreferences files
  * (type-tagged, so any keyset round-trips); library categories are JSON-lines dumps of the
@@ -46,7 +46,7 @@ object WhiteBearExport {
     const val VERSION = 2
 
     /**
-     * Family-wide backup name (白い熊, 2026-07-25): `shiroikuma-shosekietsuran_<stamp>.zip`,
+     * Family-wide backup name (Episteme, 2026-07-25): `shiroikuma-shosekietsuran_<stamp>.zip`,
      * no version and no decoration, so every sister app's backups sort and read uniformly
      * in one directory.
      */
@@ -84,19 +84,19 @@ object WhiteBearExport {
         internal val files: List<FileSpec> = emptyList()
     ) {
         WB_UI(
-            "wb_ui", "白い熊 UI — colors, fonts, shapes",
+            "wb_ui", "Episteme UI — colors, fonts, shapes",
             prefsFiles = listOf("whitebear_ui_prefs")
         ),
         WB_GESTURES(
-            "wb_gestures", "白い熊 gestures & page turning",
+            "wb_gestures", "Episteme gestures & page turning",
             prefsFiles = listOf("whitebear_gesture_prefs")
         ),
         WB_LIBRARY(
-            "wb_library", "白い熊 library view",
+            "wb_library", "Episteme library view",
             prefsFiles = listOf("whitebear_library_prefs")
         ),
         WB_WRITING(
-            "wb_writing", "白い熊 writing 縦書き",
+            "wb_writing", "Episteme writing 縦書き",
             prefsFiles = listOf("whitebear_writing_prefs")
         ),
         APP_SETTINGS(
@@ -130,7 +130,7 @@ object WhiteBearExport {
         ),
 
         /**
-         * Its own item, and unticked until asked for (白い熊, 2026-07-27).
+         * Its own item, and unticked until asked for (Episteme, 2026-07-27).
          *
          * The covers are thousands of files and the bulk of an archive's bytes, and unlike
          * everything else here they are derived from the book files rather than authored — so
@@ -251,11 +251,11 @@ object WhiteBearExport {
         /** True once the run as a whole is out of time — finish the current step and get out. */
         fun exhausted(): Boolean = SystemClock.elapsedRealtime() - startedAt > ceilingMs
 
-        /** True once 白い熊 has called this run off. */
+        /** True once Episteme has called this run off. */
         fun cancelled(): Boolean = isCancelled()
 
         /**
-         * Unwind a run 白い熊 called off, by throwing where the caller can act on it.
+         * Unwind a run Episteme called off, by throwing where the caller can act on it.
          *
          * Called between entries and nowhere else. A cancel is not an emergency and must never be
          * served by interrupting the thread, closing the descriptor under it or killing the
@@ -297,7 +297,7 @@ object WhiteBearExport {
     }
 
     /**
-     * Thrown to end a run 白い熊 pressed 中止 on — not a failure of the export, and told apart
+     * Thrown to end a run Episteme pressed 中止 on — not a failure of the export, and told apart
      * from one by its type: whoever answers for the run says 「cancelled」 rather than reporting
      * an error nothing went wrong to cause.
      */
@@ -500,7 +500,7 @@ object WhiteBearExport {
      * What an export is called while it is still being written.
      *
      * An interrupted export — killed, crashed, out of disk — leaves behind whatever it managed to
-     * write. Under the *final* name that is worse than leaving nothing: 白い熊 keeps every app's
+     * write. Under the *final* name that is worse than leaving nothing: Episteme keeps every app's
      * backups in one directory sorted by date, so a truncated archive becomes "the latest backup"
      * and stays that way until the day it is needed. (Three of them elsewhere in the family on
      * 2026-07-28 — 454 MB, 1007 MB, 1072 MB, none with an end-of-central-directory, all wearing

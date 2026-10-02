@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicReference
  *
  * The reply is always a fresh broadcast: EMUI will not reliably carry a live Binder
  * (ResultReceiver / PendingIntent / Messenger) into another app's manifest receiver, and it
- * severs the ordered-broadcast result channel between third-party apps (verified on 白い熊's
+ * severs the ordered-broadcast result channel between third-party apps (verified on Episteme's
  * Mate XT, 2026-07-23). [Intent.FLAG_INCLUDE_STOPPED_PACKAGES] so a backgrounded or stopped
  * caller still hears us.
  */
@@ -54,7 +54,7 @@ internal object AutomationWire {
     const val TAG = "WhiteBearAutomation"
 
     /** What 自由作業盤's summary and progress panel call this app. */
-    const val APP_LABEL = "白い熊 書籍閲覧"
+    const val APP_LABEL = "Episteme"
 
     fun sendReply(
         context: Context,
@@ -120,7 +120,7 @@ internal object AutomationWire {
  * **A broadcast receiver cannot hold this export** — `goAsync()` does not extend the broadcast
  * window (~10 s foreground, ~60 s otherwise), so a manifest receiver that keeps the
  * `PendingResult` open across a real export is killed mid-write with an ANR. That is not
- * hypothetical: on 白い熊's Mate XT, 2026-07-27, this app was exporting 8444 covers, reached
+ * hypothetical: on Episteme's Mate XT, 2026-07-27, this app was exporting 8444 covers, reached
  * ~1200, and was killed — no reply, half-written ZIP, and the 保存復元 batch left waiting on a
  * dead process. So [StateExportReceiver] does nothing but gate the request and start this
  * service, and everything slow lives here: the export, the progress broadcasts, and the one
@@ -139,7 +139,7 @@ internal object AutomationWire {
  * a request that finds the slot held by a run older than any run may live takes it over; and the
  * heartbeat is sent by the watchdog itself, so it cannot outlive the work it reports on.
  *
- * **And a run 白い熊 no longer wants must be able to stop.** With 「Book covers」 ticked an export
+ * **And a run Episteme no longer wants must be able to stop.** With 「Book covers」 ticked an export
  * is a many-minute job, and 保存復元's 中止 used to stop only 自由作業盤 listening — the app carried
  * on and delivered a backup that had been called off. So [cancel] marks the run, the export
  * notices between entries, and it unwinds itself: partial file deleted, `ERROR:cancelled` sent,
@@ -296,7 +296,7 @@ class StateExportService : Service() {
         @Volatile var lastProgressAt: Long = startedAt
         @Volatile var item: String = "開始"
 
-        /** 白い熊 pressed 中止. Read by the export between entries, and by nothing else. */
+        /** Episteme pressed 中止. Read by the export between entries, and by nothing else. */
         @Volatile var cancelled: Boolean = false
 
         @Volatile var worker: Thread? = null
@@ -599,7 +599,7 @@ class StateExportService : Service() {
         private val current = AtomicReference<Run?>(null)
 
         /**
-         * 白い熊 pressed 中止 — mark the run and return.
+         * Episteme pressed 中止 — mark the run and return.
          *
          * Nothing here interrupts a thread, closes a descriptor or stops the service. A cancel
          * that tore the work down from under itself would leave behind exactly the half-written

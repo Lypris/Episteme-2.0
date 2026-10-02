@@ -8,7 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
 /**
- * Fork-local (白い熊) reading-gesture configuration for the EPUB/text reader:
+ * Fork-local (Episteme) reading-gesture configuration for the EPUB/text reader:
  * left/right tap zones turn pages, a vertical swipe on the right third changes font
  * size, a vertical swipe on the left third changes screen brightness.
  */

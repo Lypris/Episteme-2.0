@@ -89,6 +89,7 @@ val SortOrder.labelRes: Int
         SortOrder.DATE_ADDED_OLDEST -> R.string.sort_date_added_oldest
         SortOrder.TITLE_ASC -> R.string.sort_title_az
         SortOrder.AUTHOR_ASC -> R.string.sort_author_az
+        SortOrder.SERIES_ASC -> R.string.sort_series
         SortOrder.PERCENT_ASC -> R.string.sort_percent_asc
         SortOrder.PERCENT_DESC -> R.string.sort_percent_desc
         SortOrder.SIZE_ASC -> R.string.sort_size_smallest
